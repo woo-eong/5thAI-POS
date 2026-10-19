@@ -162,12 +162,6 @@
             margin-top: 5px;
         }
 
-        .uncertain-text {
-            color: #f87171;
-            font-size: 1.2rem;
-            font-weight: bold;
-        }
-
         #label-container {
             width: 100%;
             margin-top: 15px;
@@ -261,13 +255,12 @@
         const REQUIRED_FRAMES = 8; 
         let isCaptured = false;
 
-        // 깔끔한 10,000 won 형식 표기 매핑
         const priceDataMap = {
             "class_10000": { icon: "🧢", ko: "10,000원", en: "They are 10,000 won." },
             "class_20000": { icon: "👓", ko: "20,000원", en: "They are 20,000 won." },
             "class_30000": { icon: "👟", ko: "30,000원", en: "They are 30,000 won." },
-            "class_40000": { icon: "🎒", ko: "40,000원", en: "They are 40,000 won." },
-            "class_50000": { icon: "🧥", ko: "50,000원", en: "They are 50,000 won." }
+            "class_40000": { icon: "🎒", ko: "40,000원", en: "They are forty thousand won." }, // 예외 방어용 유지
+            "class_50000": { icon: "🧥", ko: "50,000원", en: "They are fifty thousand won." }
         };
 
         window.onload = async function() {
@@ -312,26 +305,35 @@
             }
         }
 
-        // 카메라 켜기 및 '다시 인식하기' 버튼 통합 안정화 함수
+        // 웹캠 안전 종료 함수
+        async function stopWebcam() {
+            if (webcam) {
+                try {
+                    await webcam.stop();
+                } catch (e) {
+                    console.log("웹캠 정지 중 예외 발생 (무시 가능):", e);
+                }
+                webcam = null;
+            }
+            isWebcamActive = false;
+        }
+
+        // 카메라 켜기 / 다시 인식하기 버튼 통합 함수
         async function initWebcam() {
             unlockAudio();
             if (!model) await loadModel();
 
-            // 만약 이미 웹캠이 켜져 있다면 완전히 정지시킨 뒤 재시작
-            if (isWebcamActive && webcam) {
-                try {
-                    await webcam.stop();
-                } catch(e) {
-                    console.log(e);
-                }
-                isWebcamActive = false;
+            // 1. 기존 카메라가 켜져 있다면 완전히 끄고 DOM 컨테이너를 비움
+            if (isWebcamActive) {
+                await stopWebcam();
             }
 
             document.getElementById("image-preview-container").style.display = "none";
-            document.getElementById("webcam-container").style.display = "flex";
-            document.getElementById("placeholder-text").style.display = "none";
+            const webcamContainer = document.getElementById("webcam-container");
+            webcamContainer.style.display = "flex";
+            webcamContainer.innerHTML = ""; // 기존 비디오 태그나 캔버스 완전 삭제
 
-            // 상태값 및 화면 초기화
+            // 2. 상태값 초기화
             isCaptured = false;
             stableCount = 0;
             lastDetectedClass = "";
@@ -340,133 +342,16 @@
             document.getElementById("product-icon").innerText = "📷";
 
             try {
+                // 3. 새 웹캠 객체 생성 및 실행
                 const flip = true; 
                 webcam = new tmImage.Webcam(280, 280, flip);
-                await webcam.setup();
+                await webcam.setup(); // 카메라 권한 요청 및 스트림 연결
                 await webcam.play();
-                window.requestAnimationFrame(webcamLoop);
-
-                document.getElementById("webcam-container").innerHTML = "";
-                document.getElementById("webcam-container").appendChild(webcam.canvas);
+                
+                webcamContainer.appendChild(webcam.canvas);
                 
                 const videoElement = webcam.canvas;
                 if(videoElement) videoElement.setAttribute("playsinline", true);
 
                 isWebcamActive = true;
-                document.getElementById("btn-webcam").innerText = "🔄 다시 인식하기";
-            } catch (err) {
-                alert("카메라 권한을 확인해주세요!");
-                console.error(err);
-            }
-        }
-
-        async function webcamLoop() {
-            if (isWebcamActive) {
-                webcam.update();
-                if (!isCaptured) {
-                    await predict(webcam.canvas);
-                }
-                window.requestAnimationFrame(webcamLoop);
-            }
-        }
-
-        async function handleImageUpload(event) {
-            unlockAudio();
-            const file = event.target.files[0];
-            if (!file) return;
-
-            if (isWebcamActive && webcam) {
-                try {
-                    await webcam.stop();
-                } catch(e) {}
-                isWebcamActive = false;
-                document.getElementById("btn-webcam").innerText = "🎥 카메라 켜기";
-            }
-
-            document.getElementById("webcam-container").style.display = "none";
-            const previewContainer = document.getElementById("image-preview-container");
-            const previewImage = document.getElementById("image-preview");
-            previewContainer.style.display = "flex";
-
-            isCaptured = true; 
-
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                previewImage.src = e.target.result;
-                previewImage.onload = async function() {
-                    await predict(previewImage);
-                };
-            };
-            reader.readAsDataURL(file);
-        }
-
-        async function predict(imageSource) {
-            if (!model) return;
-
-            const prediction = await model.predict(imageSource);
-
-            let maxConfidence = 0;
-            let topClass = "";
-
-            for (let i = 0; i < maxPredictions; i++) {
-                const className = prediction[i].className;
-                const probability = prediction[i].probability;
-                const percent = (probability * 100).toFixed(0);
-
-                document.getElementById(`percent-${i}`).innerText = `${percent}%`;
-                document.getElementById(`bar-${i}`).style.width = `${percent}%`;
-
-                if (probability > maxConfidence) {
-                    maxConfidence = probability;
-                    topClass = className;
-                }
-            }
-
-            const THRESHOLD = 0.70; 
-
-            if (maxConfidence >= THRESHOLD && topClass !== "background") {
-                if (topClass === lastDetectedClass) {
-                    stableCount++;
-                } else {
-                    lastDetectedClass = topClass;
-                    stableCount = 1;
-                }
-
-                if (stableCount >= REQUIRED_FRAMES) {
-                    triggerAutoCapture(topClass);
-                }
-            } else {
-                stableCount = 0;
-            }
-        }
-
-        function triggerAutoCapture(detectedClass) {
-            isCaptured = true; 
-
-            const flash = document.getElementById("flash-box");
-            flash.classList.add("active");
-            setTimeout(() => flash.classList.remove("active"), 200);
-
-            const data = priceDataMap[detectedClass];
-            if (data) {
-                document.getElementById("product-icon").innerText = data.icon;
-                document.getElementById("price-ko").innerText = data.ko;
-                document.getElementById("price-en").className = "price-text-en";
-                document.getElementById("price-en").innerText = data.en;
-
-                speakTTS(data.en);
-            }
-        }
-
-        function speakTTS(text) {
-            if ('speechSynthesis' in window) {
-                window.speechSynthesis.cancel();
-                const utterance = new SpeechSynthesisUtterance(text);
-                utterance.lang = 'en-US';
-                utterance.rate = 0.85; 
-                window.speechSynthesis.speak(utterance);
-            }
-        }
-    </script>
-</body>
-</html>
+                document.getElementById("
