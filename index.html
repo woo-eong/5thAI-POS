@@ -1,0 +1,449 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Market POS - 5학년 영어 시장놀이</title>
+    
+    <!-- 1. 티처블머신 공식 TensorFlow.js 및 Teachable Machine Image 라이브러리 (스크립트 그대로 유지) -->
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@1.3.1/dist/tf.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@0.8.3/dist/teachablemachine-image.min.js"></script>
+
+    <style>
+        /* 기본 스타일 및 태블릿 친화적 반응형 레이아웃 설정 */
+        * {
+            box-sizing: border-box;
+            font-family: 'Malgun Gothic', 'Noto Sans KR', sans-serif;
+        }
+
+        body {
+            background-color: #f0f4f8;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        h1 {
+            color: #2c3e50;
+            font-size: 1.8rem;
+            margin-bottom: 5px;
+        }
+
+        p.sub-title {
+            color: #7f8c8d;
+            font-size: 1rem;
+            margin: 0;
+        }
+
+        /* 메인 컨테이너 (웹캠/업로드 뷰 + 결제 결과 패널) */
+        .container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+            max-width: 900px;
+            width: 100%;
+            justify-content: center;
+        }
+
+        .card {
+            background: white;
+            border-radius: 16px;
+            padding: 20px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+            flex: 1;
+            min-width: 300px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        /* 미디어 화면 영역 (웹캠 / 업로드 이미지) */
+        #webcam-container, #image-preview-container {
+            width: 280px;
+            height: 280px;
+            border: 3px dashed #cbd5e1;
+            border-radius: 12px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+            background-color: #f8fafc;
+            position: relative;
+        }
+
+        #webcam-container canvas, #image-preview {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        /* 모드 전환 버튼 구역 */
+        .btn-group {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+            width: 100%;
+        }
+
+        button, label.file-upload-btn {
+            flex: 1;
+            padding: 12px;
+            border: none;
+            border-radius: 8px;
+            background-color: #3b82f6;
+            color: white;
+            font-weight: bold;
+            font-size: 0.95rem;
+            cursor: pointer;
+            text-align: center;
+            transition: background 0.2s;
+        }
+
+        button:hover, label.file-upload-btn:hover {
+            background-color: #2563eb;
+        }
+
+        button:disabled {
+            background-color: #94a3b8;
+            cursor: not-allowed;
+        }
+
+        input[type="file"] {
+            display: none;
+        }
+
+        /* 결과 출력 및 POS 디스플레이 영역 */
+        .pos-display {
+            width: 100%;
+            text-align: center;
+            background-color: #1e293b;
+            color: #f8fafc;
+            padding: 20px;
+            border-radius: 12px;
+            min-height: 180px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .product-icon {
+            font-size: 3.5rem;
+            margin-bottom: 10px;
+        }
+
+        .price-text-ko {
+            font-size: 1.1rem;
+            color: #94a3b8;
+        }
+
+        .price-text-en {
+            font-size: 1.4rem;
+            font-weight: bold;
+            color: #38bdf8;
+            margin-top: 5px;
+        }
+
+        .uncertain-text {
+            color: #f87171;
+            font-size: 1.3rem;
+            font-weight: bold;
+        }
+
+        /* 클래스별 확률 게이지 바 목록 */
+        #label-container {
+            width: 100%;
+            margin-top: 15px;
+        }
+
+        .confidence-bar-wrapper {
+            margin-bottom: 8px;
+        }
+
+        .confidence-title {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.85rem;
+            color: #475569;
+            margin-bottom: 3px;
+        }
+
+        .bar-background {
+            height: 10px;
+            background-color: #e2e8f0;
+            border-radius: 5px;
+            overflow: hidden;
+        }
+
+        .bar-fill {
+            height: 100%;
+            background-color: #10b981;
+            width: 0%;
+            transition: width 0.2s;
+        }
+
+        /* 보안/개인정보 안내 태그 */
+        .privacy-notice {
+            margin-top: 20px;
+            font-size: 0.8rem;
+            color: #64748b;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>🛒 AI Market POS</h1>
+        <p class="sub-title">5학년 영어 9단원: "How Much Is It?"</p>
+    </header>
+
+    <div class="container">
+        <!-- 1. 카메라 및 입력 영역 -->
+        <div class="card">
+            <div id="webcam-container">
+                <span id="placeholder-text" style="color: #94a3b8; text-align: center; padding: 10px;">
+                    [카메라 켜기] 또는<br>[사진 올리기]를 선택하세요.
+                </span>
+            </div>
+            <div id="image-preview-container" style="display: none;">
+                <img id="image-preview" src="" alt="업로드 이미지">
+            </div>
+
+            <div class="btn-group">
+                <button id="btn-webcam" onclick="initWebcam()">🎥 카메라 켜기</button>
+                <label for="file-input" class="file-upload-btn">📁 사진 올리기</label>
+                <input type="file" id="file-input" accept="image/*" onchange="handleImageUpload(event)">
+            </div>
+        </div>
+
+        <!-- 2. AI 판정 결과 및 POS 화면 영역 -->
+        <div class="card">
+            <div class="pos-display">
+                <div id="product-icon" class="product-icon">🛍️</div>
+                <div id="price-ko" class="price-ko">가격표 손글씨를 스캔해 주세요.</div>
+                <div id="price-en" class="price-text-en">Show me the price tag!</div>
+            </div>
+
+            <!-- 확률 상태 바 -->
+            <div id="label-container"></div>
+        </div>
+    </div>
+
+    <div class="privacy-notice">
+        🔒 <b>개인정보 보호 안내:</b> 사용되는 촬영 영상 및 사진 데이터는 외부 서버로 절대 전송되거나 저장되지 않으며, 웹브라우저 메모리 내에서만 안전하게 처리됩니다.
+    </div>
+
+    <script type="text/javascript">
+        // -------------------------------------------------------------
+        // [설정] 티처블머신 모델 경로 지정
+        // 같은 폴더 내의 model.json, metadata.json, weights.bin을 호출합니다.
+        // -------------------------------------------------------------
+        const URL = "./"; 
+
+        let model, webcam, labelContainer, maxPredictions;
+        let isWebcamActive = false;
+
+        // -------------------------------------------------------------
+        // [클래스 매핑 데이터] 가격대별 시각 자산(아이콘), 한글/영어 가격표 및 TTS 문구
+        // -------------------------------------------------------------
+        const priceDataMap = {
+            "class_10000": { icon: "🧢", ko: "10,000원", en: "They're ten thousand won." },
+            "class_20000": { icon: "👓", ko: "20,000원", en: "They're twenty thousand won." },
+            "class_30000": { icon: "👟", ko: "30,000원", en: "They're thirty thousand won." },
+            "class_40000": { icon: "🎒", ko: "40,000원", en: "They're forty thousand won." },
+            "class_50000": { icon: "🧥", ko: "50,000원", en: "They're fifty thousand won." }
+        };
+
+        // 페이지 로드 시 AI 모델 초기화
+        window.onload = async function() {
+            await loadModel();
+        };
+
+        // 티처블머신 모델 로드 함수
+        async function loadModel() {
+            const modelURL = URL + "model.json";
+            const metadataURL = URL + "metadata.json";
+
+            try {
+                // 모델 파일 3개를 로컬 동일 폴더 경로에서 불러옵니다.
+                model = await tmImage.load(modelURL, metadataURL);
+                maxPredictions = model.getTotalClasses();
+
+                // UI 게이지 바 생성을 위한 컨테이너 준비
+                labelContainer = document.getElementById("label-container");
+                labelContainer.innerHTML = "";
+                for (let i = 0; i < maxPredictions; i++) {
+                    const classTitle = model.getClassLabels()[i];
+                    const wrapper = document.createElement("div");
+                    wrapper.className = "confidence-bar-wrapper";
+                    wrapper.innerHTML = `
+                        <div class="confidence-title">
+                            <span>${classTitle}</span>
+                            <span id="percent-${i}">0%</span>
+                        </div>
+                        <div class="bar-background">
+                            <div id="bar-${i}" class="bar-fill"></div>
+                        </div>
+                    `;
+                    labelContainer.appendChild(wrapper);
+                }
+            } catch (error) {
+                console.error("모델 로드 실패:", error);
+                document.getElementById("price-ko").innerText = "모델 파일을 불러올 수 없습니다.";
+                document.getElementById("price-en").innerText = "model.json 파일 위치를 확인해 주세요.";
+            }
+        }
+
+        // -------------------------------------------------------------
+        // [입력 방식 1] 웹캠 실시간 인식 초기화 및 루프
+        // -------------------------------------------------------------
+        async function initWebcam() {
+            if (!model) await loadModel();
+
+            // 화면 전환 (업로드 이미지 숨기고 웹캠 보이기)
+            document.getElementById("image-preview-container").style.display = "none";
+            document.getElementById("webcam-container").style.display = "flex";
+            document.getElementById("placeholder-text").style.display = "none";
+
+            if (!isWebcamActive) {
+                const flip = true; // 좌우 반전
+                webcam = new tmImage.Webcam(280, 280, flip);
+                await webcam.setup();
+                await webcam.play();
+                window.requestAnimationFrame(webcamLoop);
+
+                document.getElementById("webcam-container").innerHTML = "";
+                document.getElementById("webcam-container").appendChild(webcam.canvas);
+                
+                // iOS Safari 대응: playsinline 추가
+                const videoElement = webcam.canvas;
+                if(videoElement) videoElement.setAttribute("playsinline", true);
+
+                isWebcamActive = true;
+                document.getElementById("btn-webcam").innerText = "🔄 카메라 재시작";
+            }
+        }
+
+        // 웹캠 지속 업데이트 루프
+        async function webcamLoop() {
+            if (isWebcamActive) {
+                webcam.update();
+                await predict(webcam.canvas);
+                window.requestAnimationFrame(webcamLoop);
+            }
+        }
+
+        // -------------------------------------------------------------
+        // [입력 방식 2] 단일 이미지 파일 업로드 처리
+        // -------------------------------------------------------------
+        async function handleImageUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            // 웹캠 비활성화
+            if (isWebcamActive && webcam) {
+                await webcam.stop();
+                isWebcamActive = false;
+                document.getElementById("btn-webcam").innerText = "🎥 카메라 켜기";
+            }
+
+            // 화면 전환 (웹캠 숨기고 업로드 이미지 미리보기)
+            document.getElementById("webcam-container").style.display = "none";
+            const previewContainer = document.getElementById("image-preview-container");
+            const previewImage = document.getElementById("image-preview");
+            previewContainer.style.display = "flex";
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                previewImage.src = e.target.result;
+                previewImage.onload = async function() {
+                    // 브라우저 로컬 메인 메모리 내에서 즉시 추론 수행
+                    await predict(previewImage);
+                };
+            };
+            reader.readAsDataURL(file);
+        }
+
+        // -------------------------------------------------------------
+        // [AI 핵심 추론 및 예외 처리(신뢰도 임계값)]
+        // -------------------------------------------------------------
+        let lastSpokenText = ""; // 중복 음성 재생 방지용 변수
+
+        async function predict(imageSource) {
+            if (!model) return;
+
+            // 모델 추론 실행
+            const prediction = await model.predict(imageSource);
+
+            let maxConfidence = 0;
+            let bestClass = "";
+
+            // 게이지 바 업데이트 및 최대 확률 클래스 탐색
+            for (let i = 0; i < maxPredictions; i++) {
+                const className = prediction[i].className;
+                const probability = prediction[i].probability;
+                const percent = (probability * 100).toFixed(0);
+
+                document.getElementById(`percent-${i}`).innerText = `${percent}%`;
+                document.getElementById(`bar-${i}`).style.width = `${percent}%`;
+
+                if (probability > maxConfidence) {
+                    maxConfidence = probability;
+                    bestClass = className;
+                }
+            }
+
+            // -------------------------------------------------------------
+            // [분기 처리] 최대 확률이 0.7 (70%) 미만이거나 background 인 경우
+            // -------------------------------------------------------------
+            const CONFIDENCE_THRESHOLD = 0.7; // 임계값 70% 명시
+
+            if (maxConfidence < CONFIDENCE_THRESHOLD || bestClass === "background") {
+                // 예외 처리 UI 디스플레이
+                document.getElementById("product-icon").innerText = "❓";
+                document.getElementById("price-ko").innerText = "가격표를 잘 알아볼 수 없어요.";
+                document.getElementById("price-en").className = "uncertain-text";
+                document.getElementById("price-en").innerText = "잘 모르겠어요 (Show it clearly!)";
+            } else {
+                // 정상 인식 UI 및 음성 처리
+                const data = priceDataMap[bestClass];
+                if (data) {
+                    document.getElementById("product-icon").innerText = data.icon;
+                    document.getElementById("price-ko").innerText = data.ko;
+                    document.getElementById("price-en").className = "price-text-en";
+                    document.getElementById("price-en").innerText = data.en;
+
+                    // 새로운 정인식 결과일 경우 음성(TTS) 읽기 지원
+                    if (lastSpokenText !== data.en) {
+                        speakTTS(data.en);
+                        lastSpokenText = data.en;
+                    }
+                }
+            }
+        }
+
+        // -------------------------------------------------------------
+        // [TTS 기능] Web Speech API를 활용한 영어 발음 자동 읽기
+        // -------------------------------------------------------------
+        function speakTTS(text) {
+            if ('speechSynthesis' in window) {
+                // 이전 음성 캔슬
+                window.speechSynthesis.cancel();
+
+                const utterance = new SpeechSynthesisUtterance(text);
+                utterance.lang = 'en-US'; // 미국 영어 발음 설정
+                utterance.rate = 0.9;      // 초등학생용 안정된 발화 속도
+                window.speechSynthesis.speak(utterance);
+            }
+        }
+    </script>
+</body>
+</html>
