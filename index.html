@@ -5,12 +5,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AI Market POS - 5학년 영어 시장놀이</title>
     
-    <!-- 1. 티처블머신 공식 TensorFlow.js 및 Teachable Machine Image 라이브러리 (스크립트 그대로 유지) -->
+    <!-- 1. 티처블머신 공식 TensorFlow.js 및 Teachable Machine Image 라이브러리 -->
     <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@1.3.1/dist/tf.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@0.8.3/dist/teachablemachine-image.min.js"></script>
 
     <style>
-        /* 기본 스타일 및 태블릿 친화적 반응형 레이아웃 설정 */
         * {
             box-sizing: border-box;
             font-family: 'Malgun Gothic', 'Noto Sans KR', sans-serif;
@@ -42,7 +41,6 @@
             margin: 0;
         }
 
-        /* 메인 컨테이너 (웹캠/업로드 뷰 + 결제 결과 패널) */
         .container {
             display: flex;
             flex-wrap: wrap;
@@ -64,7 +62,7 @@
             align-items: center;
         }
 
-        /* 미디어 화면 영역 (웹캠 / 업로드 이미지) */
+        /* 카메라 화면 좌우반전(거울모드) 처리 */
         #webcam-container, #image-preview-container {
             width: 280px;
             height: 280px;
@@ -78,13 +76,19 @@
             position: relative;
         }
 
-        #webcam-container canvas, #image-preview {
+        #webcam-container canvas {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transform: scaleX(-1); /* 사용자 관점에서 숫자가 똑바로 보이도록 좌우 반전 */
+        }
+
+        #image-preview {
             width: 100%;
             height: 100%;
             object-fit: cover;
         }
 
-        /* 모드 전환 버튼 구역 */
         .btn-group {
             display: flex;
             gap: 10px;
@@ -110,16 +114,10 @@
             background-color: #2563eb;
         }
 
-        button:disabled {
-            background-color: #94a3b8;
-            cursor: not-allowed;
-        }
-
         input[type="file"] {
             display: none;
         }
 
-        /* 결과 출력 및 POS 디스플레이 영역 */
         .pos-display {
             width: 100%;
             text-align: center;
@@ -127,7 +125,7 @@
             color: #f8fafc;
             padding: 20px;
             border-radius: 12px;
-            min-height: 180px;
+            min-height: 190px;
             display: flex;
             flex-direction: column;
             justify-content: center;
@@ -157,7 +155,6 @@
             font-weight: bold;
         }
 
-        /* 클래스별 확률 게이지 바 목록 */
         #label-container {
             width: 100%;
             margin-top: 15px;
@@ -186,10 +183,9 @@
             height: 100%;
             background-color: #10b981;
             width: 0%;
-            transition: width 0.2s;
+            transition: width 0.15s ease-out;
         }
 
-        /* 보안/개인정보 안내 태그 */
         .privacy-notice {
             margin-top: 20px;
             font-size: 0.8rem;
@@ -202,15 +198,16 @@
 
     <header>
         <h1>🛒 AI Market POS</h1>
-        <p class="sub-title">5학년 영어 9단원: "How Much Is It?"</p>
+        <!-- 1번 반영: 9단원 정식 제목 수정 -->
+        <p class="sub-title">5학년 영어 9단원: "They Are Twenty Thousand Won"</p>
     </header>
 
     <div class="container">
-        <!-- 1. 카메라 및 입력 영역 -->
+        <!-- 카메라 및 사진 선택 영역 -->
         <div class="card">
             <div id="webcam-container">
                 <span id="placeholder-text" style="color: #94a3b8; text-align: center; padding: 10px;">
-                    [카메라 켜기] 또는<br>[사진 올리기]를 선택하세요.
+                    [🎥 카메라 켜기] 또는<br>[📁 사진 올리기]를 선택하세요.
                 </span>
             </div>
             <div id="image-preview-container" style="display: none;">
@@ -224,60 +221,56 @@
             </div>
         </div>
 
-        <!-- 2. AI 판정 결과 및 POS 화면 영역 -->
+        <!-- 결과 디스플레이 영역 -->
         <div class="card">
             <div class="pos-display">
                 <div id="product-icon" class="product-icon">🛍️</div>
-                <div id="price-ko" class="price-ko">가격표 손글씨를 스캔해 주세요.</div>
+                <div id="price-ko" class="price-text-ko">가격표 손글씨를 카메라에 대보세요.</div>
                 <div id="price-en" class="price-text-en">Show me the price tag!</div>
             </div>
 
-            <!-- 확률 상태 바 -->
+            <!-- 클래스별 실시간 확률 바 -->
             <div id="label-container"></div>
         </div>
     </div>
 
     <div class="privacy-notice">
-        🔒 <b>개인정보 보호 안내:</b> 사용되는 촬영 영상 및 사진 데이터는 외부 서버로 절대 전송되거나 저장되지 않으며, 웹브라우저 메모리 내에서만 안전하게 처리됩니다.
+        🔒 <b>개인정보 보호 안내:</b> 모든 영상 및 사진 데이터는 외부 서버로 전송되지 않으며, 기기 내에서만 처리됩니다.
     </div>
 
     <script type="text/javascript">
-        // -------------------------------------------------------------
-        // [설정] 티처블머신 모델 경로 지정
-        // 같은 폴더 내의 model.json, metadata.json, weights.bin을 호출합니다.
-        // -------------------------------------------------------------
         const URL = "./"; 
 
         let model, webcam, labelContainer, maxPredictions;
         let isWebcamActive = false;
 
-        // -------------------------------------------------------------
-        // [클래스 매핑 데이터] 가격대별 시각 자산(아이콘), 한글/영어 가격표 및 TTS 문구
-        // -------------------------------------------------------------
+        // 3번 반영: 수치 튐 방지를 위한 안정화(Debounce/Hold) 변수
+        let candidateClass = "";
+        let candidateCount = 0;
+        const REQUIRED_STABLE_FRAMES = 12; // 약 1초(12프레임) 이상 동일 클래스 유지 시 최종 확정
+        let currentConfirmedClass = "";
+        let lastTTSClass = ""; // 중복 발화 방지용
+
         const priceDataMap = {
-            "class_10000": { icon: "🧢", ko: "10,000원", en: "They're ten thousand won." },
-            "class_20000": { icon: "👓", ko: "20,000원", en: "They're twenty thousand won." },
-            "class_30000": { icon: "👟", ko: "30,000원", en: "They're thirty thousand won." },
-            "class_40000": { icon: "🎒", ko: "40,000원", en: "They're forty thousand won." },
-            "class_50000": { icon: "🧥", ko: "50,000원", en: "They're fifty thousand won." }
+            "class_10000": { icon: "🧢", ko: "10,000원", en: "They are ten thousand won." },
+            "class_20000": { icon: "👓", ko: "20,000원", en: "They are twenty thousand won." },
+            "class_30000": { icon: "👟", ko: "30,000원", en: "They are thirty thousand won." },
+            "class_40000": { icon: "🎒", ko: "40,000원", en: "They are forty thousand won." },
+            "class_50000": { icon: "🧥", ko: "50,000원", en: "They are fifty thousand won." }
         };
 
-        // 페이지 로드 시 AI 모델 초기화
         window.onload = async function() {
             await loadModel();
         };
 
-        // 티처블머신 모델 로드 함수
         async function loadModel() {
             const modelURL = URL + "model.json";
             const metadataURL = URL + "metadata.json";
 
             try {
-                // 모델 파일 3개를 로컬 동일 폴더 경로에서 불러옵니다.
                 model = await tmImage.load(modelURL, metadataURL);
                 maxPredictions = model.getTotalClasses();
 
-                // UI 게이지 바 생성을 위한 컨테이너 준비
                 labelContainer = document.getElementById("label-container");
                 labelContainer.innerHTML = "";
                 for (let i = 0; i < maxPredictions; i++) {
@@ -298,23 +291,27 @@
             } catch (error) {
                 console.error("모델 로드 실패:", error);
                 document.getElementById("price-ko").innerText = "모델 파일을 불러올 수 없습니다.";
-                document.getElementById("price-en").innerText = "model.json 파일 위치를 확인해 주세요.";
             }
         }
 
-        // -------------------------------------------------------------
-        // [입력 방식 1] 웹캠 실시간 인식 초기화 및 루프
-        // -------------------------------------------------------------
+        // 4번 반영: 브라우저 오디오 오디오 권한 잠금 해제 (User Gesture)
+        function unlockAudio() {
+            if ('speechSynthesis' in window) {
+                const dummyUtterance = new SpeechSynthesisUtterance("");
+                window.speechSynthesis.speak(dummyUtterance);
+            }
+        }
+
         async function initWebcam() {
+            unlockAudio(); // 클릭 이벤트 시 오디오 권한 확보
             if (!model) await loadModel();
 
-            // 화면 전환 (업로드 이미지 숨기고 웹캠 보이기)
             document.getElementById("image-preview-container").style.display = "none";
             document.getElementById("webcam-container").style.display = "flex";
             document.getElementById("placeholder-text").style.display = "none";
 
             if (!isWebcamActive) {
-                const flip = true; // 좌우 반전
+                const flip = true; // 2번 반영: 거울 모드 지원
                 webcam = new tmImage.Webcam(280, 280, flip);
                 await webcam.setup();
                 await webcam.play();
@@ -323,7 +320,6 @@
                 document.getElementById("webcam-container").innerHTML = "";
                 document.getElementById("webcam-container").appendChild(webcam.canvas);
                 
-                // iOS Safari 대응: playsinline 추가
                 const videoElement = webcam.canvas;
                 if(videoElement) videoElement.setAttribute("playsinline", true);
 
@@ -332,30 +328,25 @@
             }
         }
 
-        // 웹캠 지속 업데이트 루프
         async function webcamLoop() {
             if (isWebcamActive) {
                 webcam.update();
-                await predict(webcam.canvas);
+                await predict(webcam.canvas, false);
                 window.requestAnimationFrame(webcamLoop);
             }
         }
 
-        // -------------------------------------------------------------
-        // [입력 방식 2] 단일 이미지 파일 업로드 처리
-        // -------------------------------------------------------------
         async function handleImageUpload(event) {
+            unlockAudio(); // 파일 선택 시 오디오 권한 확보
             const file = event.target.files[0];
             if (!file) return;
 
-            // 웹캠 비활성화
             if (isWebcamActive && webcam) {
                 await webcam.stop();
                 isWebcamActive = false;
                 document.getElementById("btn-webcam").innerText = "🎥 카메라 켜기";
             }
 
-            // 화면 전환 (웹캠 숨기고 업로드 이미지 미리보기)
             document.getElementById("webcam-container").style.display = "none";
             const previewContainer = document.getElementById("image-preview-container");
             const previewImage = document.getElementById("image-preview");
@@ -365,28 +356,21 @@
             reader.onload = function(e) {
                 previewImage.src = e.target.result;
                 previewImage.onload = async function() {
-                    // 브라우저 로컬 메인 메모리 내에서 즉시 추론 수행
-                    await predict(previewImage);
+                    await predict(previewImage, true); // 이미지 업로드는 즉시 판정
                 };
             };
             reader.readAsDataURL(file);
         }
 
-        // -------------------------------------------------------------
-        // [AI 핵심 추론 및 예외 처리(신뢰도 임계값)]
-        // -------------------------------------------------------------
-        let lastSpokenText = ""; // 중복 음성 재생 방지용 변수
-
-        async function predict(imageSource) {
+        async function predict(imageSource, isStaticImage) {
             if (!model) return;
 
-            // 모델 추론 실행
             const prediction = await model.predict(imageSource);
 
             let maxConfidence = 0;
-            let bestClass = "";
+            let topClass = "";
 
-            // 게이지 바 업데이트 및 최대 확률 클래스 탐색
+            // 실시간 확률 막대 그래프 갱신
             for (let i = 0; i < maxPredictions; i++) {
                 const className = prediction[i].className;
                 const probability = prediction[i].probability;
@@ -397,50 +381,75 @@
 
                 if (probability > maxConfidence) {
                     maxConfidence = probability;
-                    bestClass = className;
+                    topClass = className;
                 }
             }
 
-            // -------------------------------------------------------------
-            // [분기 처리] 최대 확률이 0.7 (70%) 미만이거나 background 인 경우
-            // -------------------------------------------------------------
-            const CONFIDENCE_THRESHOLD = 0.7; // 임계값 70% 명시
+            const CONFIDENCE_THRESHOLD = 0.70; // 70% 임계값
 
-            if (maxConfidence < CONFIDENCE_THRESHOLD || bestClass === "background") {
-                // 예외 처리 UI 디스플레이
+            // 3번 반영: 카메라 인식 시 수치 와따가따 방지 안정화 로직
+            let targetClass = "";
+
+            if (isStaticImage) {
+                // 단일 이미지는 프레임 대기 없이 즉시 클래스 확정
+                targetClass = (maxConfidence >= CONFIDENCE_THRESHOLD && topClass !== "background") ? topClass : "uncertain";
+                updatePOSDisplay(targetClass);
+            } else {
+                // 실시간 카메라 스캔 시: 70% 이상 유지될 때 카운트 증가
+                const currentFrameClass = (maxConfidence >= CONFIDENCE_THRESHOLD && topClass !== "background") ? topClass : "uncertain";
+
+                if (currentFrameClass === candidateClass) {
+                    candidateCount++;
+                } else {
+                    candidateClass = currentFrameClass;
+                    candidateCount = 0;
+                }
+
+                // 12프레임(약 1초) 연속 같은 클래스가 유지될 때만 화면 및 음성 갱신
+                if (candidateCount >= REQUIRED_STABLE_FRAMES) {
+                    if (currentConfirmedClass !== candidateClass) {
+                        currentConfirmedClass = candidateClass;
+                        updatePOSDisplay(currentConfirmedClass);
+                    }
+                }
+            }
+        }
+
+        // 결과 화면 변경 및 4번 TTS 재생 연동
+        function updatePOSDisplay(finalClass) {
+            if (finalClass === "uncertain" || !finalClass) {
                 document.getElementById("product-icon").innerText = "❓";
                 document.getElementById("price-ko").innerText = "가격표를 잘 알아볼 수 없어요.";
                 document.getElementById("price-en").className = "uncertain-text";
                 document.getElementById("price-en").innerText = "잘 모르겠어요 (Show it clearly!)";
+                lastTTSClass = "";
             } else {
-                // 정상 인식 UI 및 음성 처리
-                const data = priceDataMap[bestClass];
+                const data = priceDataMap[finalClass];
                 if (data) {
                     document.getElementById("product-icon").innerText = data.icon;
                     document.getElementById("price-ko").innerText = data.ko;
                     document.getElementById("price-en").className = "price-text-en";
                     document.getElementById("price-en").innerText = data.en;
 
-                    // 새로운 정인식 결과일 경우 음성(TTS) 읽기 지원
-                    if (lastSpokenText !== data.en) {
+                    // 새로운 확정 결과일 때만 TTS 발음 1회 실행
+                    if (lastTTSClass !== finalClass) {
                         speakTTS(data.en);
-                        lastSpokenText = data.en;
+                        lastTTSClass = finalClass;
                     }
                 }
             }
         }
 
-        // -------------------------------------------------------------
-        // [TTS 기능] Web Speech API를 활용한 영어 발음 자동 읽기
-        // -------------------------------------------------------------
+        // 4번 반영: Web Speech API 음성 재생 기능
         function speakTTS(text) {
             if ('speechSynthesis' in window) {
-                // 이전 음성 캔슬
-                window.speechSynthesis.cancel();
+                window.speechSynthesis.cancel(); // 진행 중인 발화 중단
 
                 const utterance = new SpeechSynthesisUtterance(text);
-                utterance.lang = 'en-US'; // 미국 영어 발음 설정
-                utterance.rate = 0.9;      // 초등학생용 안정된 발화 속도
+                utterance.lang = 'en-US';
+                utterance.rate = 0.85; // 초등학생용 느리고 또렷한 발화 속도
+                utterance.pitch = 1.0;
+
                 window.speechSynthesis.speak(utterance);
             }
         }
