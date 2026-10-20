@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Market POS - 5학년 영어 시장놀이</title>
+    
+    <!-- 구글 티처블 머신 및 텐서플로우 라이브러리 -->
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@1.3.1/dist/tf.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@0.8.3/dist/teachablemachine-image.min.js"></script>
+
+    <style>
+        * {
+            box-sizing: border-box;
+            font-family: 'Malgun Gothic', 'Noto Sans KR', sans-serif;
+        }
+
+        body {
+            background-color: #f8fafc;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        h1 {
+            color: #1e293b;
+            font-size: 1.8rem;
+            margin-bottom: 5px;
+        }
+
+        p.sub-title {
+            color: #64748b;
+            font-size: 1rem;
+            margin: 0;
+        }
+
+        .main-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            max-width: 1000px;
+            width: 100%;
+        }
+
+        @media (max-width: 768px) {
+            .main-container {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .card {
+            background: white;
+            border-radius: 16px;
+            padding: 20px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+        }
+
+        h2 {
+            font-size: 1.2rem;
+            color: #334155;
+            margin-top: 0;
+            border-bottom: 2px solid #e2e8f0;
+            padding-bottom: 8px;
+            width: 100%;
+        }
+
+        #webcam-container {
+            margin: 15px 0;
+            border-radius: 12px;
+            overflow: hidden;
+            border: 3px solid #cbd5e1;
+            background: #000;
+            width: 224px;
+            height: 224px;
+        }
+
+        button.primary-btn {
+            width: 100%;
+            padding: 12px;
+            background-color: #2563eb;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-weight: bold;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: background 0.2s;
+            margin-top: 10px;
+        }
+
+        button.primary-btn:hover {
+            background-color: #1d4ed8;
+        }
+
+        /* 결과 출력 카드 스타일 */
+        .result-box {
+            width: 100%;
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 15px;
+            margin-top: 15px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        #product-img {
+            width: 140px;
+            height: 140px;
+            object-fit: cover;
+            border-radius: 10px;
+            border: 1px solid #cbd5e1;
+            margin-bottom: 10px;
+            background: #fff;
+        }
+
+        .price-tag {
+            font-size: 1.4rem;
+            font-weight: bold;
+            color: #2563eb;
+            margin: 5px 0;
+        }
+
+        .english-speech {
+            font-size: 1.1rem;
+            color: #0f172a;
+            font-weight: bold;
+            background: #e0f2fe;
+            padding: 8px 12px;
+            border-radius: 8px;
+            width: 100%;
+            margin-top: 8px;
+        }
+
+        .nav-link {
+            margin-top: 25px;
+            font-size: 0.9rem;
+        }
+
+        .nav-link a {
+            color: #64748b;
+            text-decoration: none;
+            font-weight: bold;
+        }
+
+        .nav-link a:hover {
+            color: #2563eb;
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>🛍️ AI Market POS - 스마트 시장놀이</h1>
+        <p class="sub-title">5학년 영어 9단원: 물건 가격 손글씨를 웹캠에 보여주세요!</p>
+    </header>
+
+    <div class="main-container">
+        
+        <!-- 왼쪽: 웹캠 스캔 영역 -->
+        <div class="card">
+            <h2>📷 실시간 손글씨 스캔</h2>
+            <div id="webcam-container"></div>
+            <button class="primary-btn" onclick="initWebcam()">AI 포스기 시작하기</button>
+            <div id="model-status" style="font-size: 0.85rem; color: #16a348; font-weight: bold; margin-top: 10px;">
+                모델 준비 중...
+            </div>
+        </div>
+
+        <!-- 오른쪽: AI 인식 결과 및 영어 발화 영역 -->
+        <div class="card">
+            <h2>🏷️ POS 결제 화면</h2>
+            <div class="result-box">
+                <!-- 가격대별 매칭 상품 이미지 (예시 이미지 경로, 필요시 교체 가능) -->
+                <img id="product-img" src="https://via.placeholder.com/140?text=Scan+Price" alt="상품 이미지">
+                <div style="font-size: 0.85rem; color: #64748b;">인식된 가격</div>
+                <div id="recognized-price" class="price-tag">스캔 대기 중...</div>
+                <div id="english-text" class="english-speech">"They're..."</div>
+            </div>
+            <button class="primary-btn" style="background-color: #10b981;" onclick="speakResult()">🔊 영어로 다시 듣기</button>
+        </div>
+
+    </div>
+
+    <div class="nav-link">
+        <a href="eval.html">📊 [교사용 성능 평가 대시보드 바로가기]</a>
+    </div>
+
+    <script type="text/javascript">
+        const MODEL_URL = "./"; // 티처블 머신 모델 경로
+        let model, webcam, maxPredictions;
+        let lastSpokenText = "";
+
+        // 모델 및 웹캠 초기화 함수
+        async function initWebcam() {
+            try {
+                document.getElementById("model-status").innerText = "모델 로딩 중...";
+                model = await tmImage.load(MODEL_URL + "model.json", MODEL_URL + "metadata.json");
+                maxPredictions = model.getTotalClasses();
+
+                // 웹캠 설정 (224x224 크기)
+                const flip = true; 
+                webcam = new tmImage.Webcam(224, 224, flip); 
+                await webcam.setup(); // 웹캠 권한 요청
+                await webcam.play();
+                window.requestAnimationFrame(loop);
+
+                document.getElementById("webcam-container").innerHTML = "";
+                document.getElementById("webcam-container").appendChild(webcam.canvas);
+                document.getElementById("model-status").innerText = "✔ AI 포스기 작동 중 (스캔 중)";
+            } catch (err) {
+                console.error(err);
+                alert("웹캠을 실행할 수 없거나 모델 파일 경로를 확인해주세요.");
+                document.getElementById("model-status").innerText = "❌ 실행 실패";
+            }
+        }
+
+        async function loop() {
+            webcam.update(); // 웹캠 프레임 업데이트
+            await predict();
+            window.requestAnimationFrame(loop);
+        }
+
+        // 실시간 예측 및 결과 시각화 함수
+        async function predict() {
+            const prediction = await model.predict(webcam.canvas);
+            
+            let highestProb = 0;
+            let bestClass = "";
+
+            // 가장 확률이 높은 클래스 찾기
+            prediction.forEach(p => {
+                if (p.probability > highestProb) {
+                    highestProb = p.probability;
+                    bestClass = p.className;
+                }
+            });
+
+            // 신뢰도가 80부(0.8) 이상일 때만 결과 업데이트
+            if (highestProb > 0.8) {
+                updatePOSDisplay(bestClass);
+            }
+        }
+
+        // POS 화면 업데이트 및 TTS 발화 연동
+        function speakTriggered = false;
+        function updatePOSDisplay(className) {
+            const cleanName = className.replace('class_', '');
+            const priceDisplay = document.getElementById("recognized-price");
+            const englishDisplay = document.getElementById("english-text");
+            const productImg = document.getElementById("product-img");
+
+            priceDisplay.innerText = cleanName;
+
+            let englishSentence = "";
+            let imgUrl = "";
+
+            // 가격대별 영어 문장 및 상품 이미지 매칭 (9단원 교과서 연계)
+            if (cleanName.includes("10000")) {
+                englishSentence = "They're ten thousand won.";
+                imgUrl = "https://images.unsplash.com/photo-1526170375885-4d8ecf77b99f?w=150"; // 예시 상품 이미지
+            } else if (cleanName.includes("20000")) {
+                englishSentence = "They're twenty thousand won.";
+                imgUrl = "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=150";
+            } else if (cleanName.includes("30000")) {
+                englishSentence = "They're thirty thousand won.";
+                imgUrl = "https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=150";
+            } else if (cleanName.includes("40000")) {
+                englishSentence = "They're forty thousand won.";
+                imgUrl = "https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=150";
+            } else if (cleanName.includes("50000")) {
+                englishSentence = "They're fifty thousand won.";
+                imgUrl = "https://images.unsplash.com/photo-1560343090-f0409e92791a?w=150";
+            } else {
+                englishSentence = "Please show the price card.";
+                imgUrl = "https://via.placeholder.com/140?text=Ready";
+            }
+
+            englishDisplay.innerText = `"${englishSentence}"`;
+            productImg.src = imgUrl;
+
+            // 문장이 바뀔 때만 웹 음성 합성(TTS) 자동 실행
+            if (lastSpokenText !== englishSentence && !cleanName.includes("background")) {
+                lastSpokenText = englishSentence;
+                speakText(englishSentence);
+            }
+        }
+
+        // 웹 브라우저 내장 TTS(SpeechSynthesis) 기능
+        function speakText(text) {
+            if ('speechSynthesis' in window) {
+                window.speechSynthesis.cancel(); // 이전 음성 중지
+                const speech = new SpeechSynthesisUtterance(text);
+                speech.lang = 'en-US';
+                speech.rate = 0.9; // 초등학생이 듣기 좋은 속도
+                window.speechSynthesis.speak(speech);
+            }
+        }
+
+        function speakResult() {
+            if (lastSpokenText) {
+                speakText(lastSpokenText);
+            }
+        }
+    </script>
+</body>
+</html>
