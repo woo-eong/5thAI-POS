@@ -83,6 +83,11 @@
             background: #000;
             width: 224px;
             height: 224px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #94a3b8;
+            font-size: 0.9rem;
         }
 
         button.primary-btn {
@@ -103,7 +108,11 @@
             background-color: #1d4ed8;
         }
 
-        /* 결과 출력 카드 스타일 */
+        button.primary-btn:disabled {
+            background-color: #94a3b8;
+            cursor: not-allowed;
+        }
+
         .result-box {
             width: 100%;
             background: #f8fafc;
@@ -173,10 +182,10 @@
         <!-- 왼쪽: 웹캠 스캔 영역 -->
         <div class="card">
             <h2>📷 실시간 손글씨 스캔</h2>
-            <div id="webcam-container"></div>
-            <button class="primary-btn" onclick="initWebcam()">AI 포스기 시작하기</button>
-            <div id="model-status" style="font-size: 0.85rem; color: #16a348; font-weight: bold; margin-top: 10px;">
-                모델 준비 중...
+            <div id="webcam-container">카메라 꺼짐</div>
+            <button id="start-btn" class="primary-btn" onclick="startWebcam()" disabled>AI 포스기 시작하기</button>
+            <div id="model-status" style="font-size: 0.85rem; color: #2563eb; font-weight: bold; margin-top: 10px;">
+                ⏳ AI 모델 준비 중...
             </div>
         </div>
 
@@ -184,7 +193,6 @@
         <div class="card">
             <h2>🏷️ POS 결제 화면</h2>
             <div class="result-box">
-                <!-- 가격대별 매칭 상품 이미지 (예시 이미지 경로, 필요시 교체 가능) -->
                 <img id="product-img" src="https://via.placeholder.com/140?text=Scan+Price" alt="상품 이미지">
                 <div style="font-size: 0.85rem; color: #64748b;">인식된 가격</div>
                 <div id="recognized-price" class="price-tag">스캔 대기 중...</div>
@@ -200,48 +208,85 @@
     </div>
 
     <script type="text/javascript">
-        const MODEL_URL = "./"; // 티처블 머신 모델 경로
-        let model, webcam, maxPredictions;
+        const MODEL_URL = "./"; // 티처블 머신 모델 위치
+        let model, webcam, isWebcamRunning = false;
         let lastSpokenText = "";
 
-        // 모델 및 웹캠 초기화 함수
-        async function initWebcam() {
-            try {
-                document.getElementById("model-status").innerText = "모델 로딩 중...";
-                model = await tmImage.load(MODEL_URL + "model.json", MODEL_URL + "metadata.json");
-                maxPredictions = model.getTotalClasses();
+        // 페이지가 로드되면 모델을 먼저 준비
+        window.onload = async function() {
+            await initModel();
+        };
 
-                // 웹캠 설정 (224x224 크기)
+        // 1. 모델 로드 함수
+        async function initModel() {
+            const statusDiv = document.getElementById("model-status");
+            const startBtn = document.getElementById("start-btn");
+
+            try {
+                statusDiv.innerText = "⏳ AI 모델 파일 로딩 중...";
+                model = await tmImage.load(MODEL_URL + "model.json", MODEL_URL + "metadata.json");
+                
+                statusDiv.style.color = "#16a348";
+                statusDiv.innerText = "✔ 모델 준비 완료! 버튼을 눌러 카메라를 켜주세요.";
+                startBtn.disabled = false;
+            } catch (err) {
+                console.error(err);
+                statusDiv.style.color = "#dc2626";
+                statusDiv.innerText = "❌ 모델 로드 실패! (model.json 파일 경로 확인)";
+            }
+        }
+
+        // 2. 웹캠 시작 함수
+        async function startWebcam() {
+            if (isWebcamRunning) return;
+
+            const statusDiv = document.getElementById("model-status");
+            const startBtn = document.getElementById("start-btn");
+
+            try {
+                startBtn.disabled = true;
+                statusDiv.innerText = "📷 카메라 권한 확인 중...";
+
                 const flip = true; 
                 webcam = new tmImage.Webcam(224, 224, flip); 
                 await webcam.setup(); // 웹캠 권한 요청
                 await webcam.play();
+                
+                isWebcamRunning = true;
                 window.requestAnimationFrame(loop);
 
-                document.getElementById("webcam-container").innerHTML = "";
-                document.getElementById("webcam-container").appendChild(webcam.canvas);
-                document.getElementById("model-status").innerText = "✔ AI 포스기 작동 중 (스캔 중)";
+                const container = document.getElementById("webcam-container");
+                container.innerHTML = "";
+                container.appendChild(webcam.canvas);
+                
+                statusDiv.style.color = "#16a348";
+                statusDiv.innerText = "✔ AI 포스기 작동 중 (실시간 스캔 중)";
+                startBtn.innerText = "카메라 작동 중";
             } catch (err) {
                 console.error(err);
-                alert("웹캠을 실행할 수 없거나 모델 파일 경로를 확인해주세요.");
-                document.getElementById("model-status").innerText = "❌ 실행 실패";
+                alert("웹캠을 켤 수 없습니다. 브라우저의 카메라 권한을 확인해 주세요.");
+                statusDiv.style.color = "#dc2626";
+                statusDiv.innerText = "❌ 카메라 실행 실패";
+                startBtn.disabled = false;
             }
         }
 
         async function loop() {
-            webcam.update(); // 웹캠 프레임 업데이트
+            if (!isWebcamRunning) return;
+            webcam.update();
             await predict();
             window.requestAnimationFrame(loop);
         }
 
-        // 실시간 예측 및 결과 시각화 함수
+        // 3. 실시간 손글씨 예측 로직
         async function predict() {
+            if (!model) return;
+            
             const prediction = await model.predict(webcam.canvas);
             
             let highestProb = 0;
             let bestClass = "";
 
-            // 가장 확률이 높은 클래스 찾기
             prediction.forEach(p => {
                 if (p.probability > highestProb) {
                     highestProb = p.probability;
@@ -249,14 +294,13 @@
                 }
             });
 
-            // 신뢰도가 80부(0.8) 이상일 때만 결과 업데이트
+            // 신뢰도가 80%(0.8) 이상일 때만 출력 업데이트
             if (highestProb > 0.8) {
                 updatePOSDisplay(bestClass);
             }
         }
 
-        // POS 화면 업데이트 및 TTS 발화 연동
-        function speakTriggered = false;
+        // 4. POS 결제 화면 및 영어 발화 연동
         function updatePOSDisplay(className) {
             const cleanName = className.replace('class_', '');
             const priceDisplay = document.getElementById("recognized-price");
@@ -268,10 +312,9 @@
             let englishSentence = "";
             let imgUrl = "";
 
-            // 가격대별 영어 문장 및 상품 이미지 매칭 (9단원 교과서 연계)
             if (cleanName.includes("10000")) {
                 englishSentence = "They're ten thousand won.";
-                imgUrl = "https://images.unsplash.com/photo-1526170375885-4d8ecf77b99f?w=150"; // 예시 상품 이미지
+                imgUrl = "https://images.unsplash.com/photo-1526170375885-4d8ecf77b99f?w=150";
             } else if (cleanName.includes("20000")) {
                 englishSentence = "They're twenty thousand won.";
                 imgUrl = "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=150";
@@ -292,20 +335,19 @@
             englishDisplay.innerText = `"${englishSentence}"`;
             productImg.src = imgUrl;
 
-            // 문장이 바뀔 때만 웹 음성 합성(TTS) 자동 실행
             if (lastSpokenText !== englishSentence && !cleanName.includes("background")) {
                 lastSpokenText = englishSentence;
                 speakText(englishSentence);
             }
         }
 
-        // 웹 브라우저 내장 TTS(SpeechSynthesis) 기능
+        // 5. TTS 음성 합성
         function speakText(text) {
             if ('speechSynthesis' in window) {
-                window.speechSynthesis.cancel(); // 이전 음성 중지
+                window.speechSynthesis.cancel();
                 const speech = new SpeechSynthesisUtterance(text);
                 speech.lang = 'en-US';
-                speech.rate = 0.9; // 초등학생이 듣기 좋은 속도
+                speech.rate = 0.9;
                 window.speechSynthesis.speak(speech);
             }
         }
