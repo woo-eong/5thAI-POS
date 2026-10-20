@@ -317,7 +317,7 @@
             window.requestAnimationFrame(loop);
         }
 
-        // 3. 업로드한 사진 파일 처리 (에러 원인이었던 정의 누락 함수 추가 완료)
+        // 3. 업로드한 사진 파일 처리
         async function handleImageUpload(event) {
             const file = event.target.files[0];
             if (!file || !model) return;
@@ -365,14 +365,15 @@
                 }
             });
 
-            if (highestProb > 0.8) {
+            // 최고 확률 클래스로 POS 화면 연동
+            if (highestProb > 0.5) {
                 updatePOSDisplay(bestClass);
             }
         }
 
-        // 5. POS 화면 업데이트 및 영어 발화 연동
+        // 5. POS 화면 업데이트 및 영어 발화 연동 (가격 매칭 로직 완벽 보완)
         function updatePOSDisplay(className) {
-            const cleanName = className.replace('class_', '');
+            const cleanName = className.replace('class_', '').trim();
             const priceDisplay = document.getElementById("recognized-price");
             const englishDisplay = document.getElementById("english-text");
             const productImg = document.getElementById("product-img");
@@ -382,51 +383,17 @@
             let englishSentence = "";
             let imgUrl = "";
 
-            if (cleanName.includes("10000")) {
+            // 숫자 부분만 남기거나 콤마/won 문자열에 상관없이 무조건 판별하는 조건식
+            if (cleanName.includes("10000") || cleanName.includes("10,000") || cleanName.includes("1만")) {
                 englishSentence = "They're ten thousand won.";
                 imgUrl = "https://images.unsplash.com/photo-1526170375885-4d8ecf77b99f?w=150";
-            } else if (cleanName.includes("20000")) {
+            } else if (cleanName.includes("20000") || cleanName.includes("20,000") || cleanName.includes("2만")) {
                 englishSentence = "They're twenty thousand won.";
                 imgUrl = "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=150";
-            } else if (cleanName.includes("30000")) {
+            } else if (cleanName.includes("30000") || cleanName.includes("30,000") || cleanName.includes("3만")) {
                 englishSentence = "They're thirty thousand won.";
                 imgUrl = "https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=150";
-            } else if (cleanName.includes("40000")) {
+            } else if (cleanName.includes("40000") || cleanName.includes("40,000") || cleanName.includes("4만")) {
                 englishSentence = "They're forty thousand won.";
                 imgUrl = "https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=150";
-            } else if (cleanName.includes("50000")) {
-                englishSentence = "They're fifty thousand won.";
-                imgUrl = "https://images.unsplash.com/photo-1560343090-f0409e92791a?w=150";
-            } else {
-                englishSentence = "Please show the price card.";
-                imgUrl = "https://via.placeholder.com/140?text=Ready";
-            }
-
-            englishDisplay.innerText = `"${englishSentence}"`;
-            productImg.src = imgUrl;
-
-            if (lastSpokenText !== englishSentence && !cleanName.includes("background")) {
-                lastSpokenText = englishSentence;
-                speakText(englishSentence);
-            }
-        }
-
-        // 6. TTS 음성 합성
-        function speakText(text) {
-            if ('speechSynthesis' in window) {
-                window.speechSynthesis.cancel();
-                const speech = new SpeechSynthesisUtterance(text);
-                speech.lang = 'en-US';
-                speech.rate = 0.9;
-                window.speechSynthesis.speak(speech);
-            }
-        }
-
-        function speakResult() {
-            if (lastSpokenText) {
-                speakText(lastSpokenText);
-            }
-        }
-    </script>
-</body>
-</html>
+            } else if (cleanName.includes("50000") || cleanName.includes("50,000") || cleanName.includes("
