@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AI Market POS - 교사용 성능 평가 대시보드</title>
     
+    <!-- 구글 티처블 머신 및 텐서플로우 라이브러리 -->
     <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@1.3.1/dist/tf.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@0.8.3/dist/teachablemachine-image.min.js"></script>
 
@@ -17,7 +18,7 @@
         body {
             background-color: #f1f5f9;
             margin: 0;
-            padding: 30px;
+            padding: 20px;
             display: flex;
             flex-direction: column;
             align-items: center;
@@ -25,38 +26,41 @@
 
         header {
             text-align: center;
-            margin-bottom: 25px;
+            margin-bottom: 20px;
+            width: 100%;
+            max-width: 1200px;
         }
 
         h1 {
             color: #1e293b;
-            font-size: 1.8rem;
-            margin-bottom: 8px;
+            font-size: 1.6rem;
+            margin-bottom: 5px;
         }
 
         p.sub-title {
             color: #64748b;
-            font-size: 1rem;
+            font-size: 0.95rem;
             margin: 0;
         }
 
-        .dashboard-container {
+        /* 2x2 대시보드 그리드 레이아웃 */
+        .dashboard-grid {
             display: grid;
-            grid-template-columns: 1fr 2fr;
+            grid-template-columns: 1fr 1fr;
             gap: 20px;
-            max-width: 1150px;
+            max-width: 1200px;
             width: 100%;
         }
 
-        @media (max-width: 768px) {
-            .dashboard-container {
+        @media (max-width: 900px) {
+            .dashboard-grid {
                 grid-template-columns: 1fr;
             }
         }
 
         .card {
             background: white;
-            border-radius: 16px;
+            border-radius: 14px;
             padding: 20px;
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
             display: flex;
@@ -64,86 +68,105 @@
         }
 
         h2 {
-            font-size: 1.2rem;
+            font-size: 1.1rem;
             color: #334155;
             margin-top: 0;
             border-bottom: 2px solid #e2e8f0;
-            padding-bottom: 10px;
-        }
-
-        .control-group {
+            padding-bottom: 8px;
             margin-bottom: 15px;
         }
 
-        label {
+        /* 컨트롤 영역 버튼 스타일 */
+        .btn-group {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        button.action-btn {
+            flex: 1;
+            padding: 10px;
+            background-color: #2563eb;
+            color: white;
+            border: none;
+            border-radius: 8px;
             font-weight: bold;
-            font-size: 0.9rem;
+            font-size: 0.95rem;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        button.action-btn:hover {
+            background-color: #1d4ed8;
+        }
+
+        button.reset-btn {
+            padding: 10px 15px;
+            background-color: #e2e8f0;
             color: #475569;
-            display: block;
-            margin-bottom: 5px;
+            border: none;
+            border-radius: 8px;
+            font-weight: bold;
+            font-size: 0.95rem;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        button.reset-btn:hover {
+            background-color: #cbd5e1;
         }
 
         input[type="file"] {
             width: 100%;
-            padding: 10px;
+            padding: 8px;
             background: #f8fafc;
             border: 1px dashed #cbd5e1;
             border-radius: 8px;
             cursor: pointer;
         }
 
-        button.eval-btn {
-            width: 100%;
-            padding: 12px;
-            background-color: #2563eb;
-            color: white;
-            border: none;
-            border-radius: 8px;
-            font-weight: bold;
-            font-size: 1rem;
-            cursor: pointer;
-            transition: background 0.2s;
-            margin-top: 10px;
-        }
-
-        button.eval-btn:hover {
-            background-color: #1d4ed8;
-        }
-
-        .metrics-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 10px;
-            margin-bottom: 15px;
-        }
-
-        .metric-card {
-            background: #f8fafc;
-            padding: 12px;
-            border-radius: 8px;
-            text-align: center;
-            border: 1px solid #e2e8f0;
-        }
-
-        .metric-value {
-            font-size: 1.4rem;
+        /* 전체 정률 및 수치 박스 */
+        .metric-highlight {
+            font-size: 1.8rem;
             font-weight: bold;
             color: #2563eb;
-            margin-top: 5px;
+            margin: 5px 0;
         }
 
+        /* 클래스별 정분류율 바 그래프 스타일 */
+        .class-acc-item {
+            margin-bottom: 10px;
+            font-size: 0.85rem;
+            color: #475569;
+        }
+
+        .bar-container {
+            background: #e2e8f0;
+            border-radius: 6px;
+            height: 14px;
+            width: 100%;
+            margin-top: 4px;
+            overflow: hidden;
+        }
+
+        .bar-fill {
+            background-color: #2563eb;
+            height: 100%;
+            width: 0%;
+            transition: width 0.4s ease;
+        }
+
+        /* 혼동행렬 표 스타일 */
         table.matrix-table {
             width: 100%;
             border-collapse: collapse;
-            margin-top: 10px;
-            font-size: 0.8rem;
+            font-size: 0.75rem;
             text-align: center;
         }
 
         table.matrix-table th, table.matrix-table td {
             border: 1px solid #cbd5e1;
-            padding: 8px 4px;
-            word-break: break-all;
+            padding: 6px 2px;
         }
 
         table.matrix-table th {
@@ -163,25 +186,45 @@
             color: #991b1b;
         }
 
-        #error-log-container {
-            max-height: 200px;
-            overflow-y: auto;
-            background: #f8fafc;
-            border: 1px solid #e2e8f0;
-            border-radius: 8px;
-            padding: 10px;
-            font-size: 0.85rem;
+        /* 4번 영역: 틀린 사진 갤러리 카드 스타일 (예시 화면 반영) */
+        #wrong-images-container {
+            display: flex;
+            gap: 12px;
+            overflow-x: auto;
+            padding: 5px 0;
+            min-height: 160px;
+            align-items: center;
         }
 
-        .error-item {
-            padding: 6px;
-            border-bottom: 1px solid #e2e8f0;
+        .wrong-card {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 10px;
+            padding: 8px;
+            min-width: 110px;
+            text-align: center;
+            flex-shrink: 0;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.02);
+        }
+
+        .wrong-card img {
+            width: 80px;
+            height: 80px;
+            object-fit: cover;
+            border-radius: 6px;
+            border: 1px solid #cbd5e1;
+            margin-bottom: 5px;
+        }
+
+        .wrong-card .wrong-info {
+            font-size: 0.72rem;
             color: #475569;
+            line-height: 1.2;
         }
 
         .privacy-notice {
             margin-top: 20px;
-            font-size: 0.8rem;
+            font-size: 0.75rem;
             color: #64748b;
             text-align: center;
         }
@@ -191,64 +234,71 @@
 
     <header>
         <h1>📊 AI Market POS - 교사용 성능 평가 대시보드</h1>
-        <p class="sub-title">중간과제 제출용: 모델 검증, 혼동행렬(Confusion Matrix) 및 오답 분석</p>
+        <p class="sub-title">중간과제 제출용: 모델 검증, 혼동행렬, 클래스별 정분류율 및 오답 이미지 시각화</p>
     </header>
 
-    <div class="dashboard-container">
-        <!-- 왼쪽 패널 -->
+    <!-- 4분할 대시보드 그리드 컨테이너 -->
+    <div class="dashboard-grid">
+        
+        <!-- [1번 영역] 테스트 사진 넣기 및 전체 정확도 요약 -->
         <div class="card">
-            <h2>🧪 테스트 세트 평가</h2>
-            <div class="control-group" style="margin-top: 10px;">
+            <h2>1. 테스트 사진 넣기</h2>
+            <div class="control-group">
                 <label>테스트 이미지 일괄 업로드 (여러 장 선택)</label>
                 <input type="file" id="test-files" accept="image/*" multiple>
             </div>
-            <button class="eval-btn" onclick="runEvaluation()">모델 성능 평가 실행</button>
-
-            <div style="margin-top: 20px;">
-                <label>모델 로드 상태</label>
-                <div id="model-status" style="font-size: 0.9rem; color: #16a348; font-weight: bold; margin-top: 5px;">
-                    모델 로딩 중...
-                </div>
+            
+            <div class="btn-group">
+                <button class="action-btn" onclick="runEvaluation()">모델 성능 평가 실행</button>
+                <button class="reset-btn" onclick="resetDashboard()">초기화</button>
             </div>
 
-            <div style="margin-top: 20px;">
-                <label>인식된 클래스 목록</label>
-                <div id="class-labels" style="font-size: 0.85rem; color: #64748b; line-height: 1.5;">-</div>
+            <div style="margin-top: 15px; font-size: 0.85rem; color: #475569;">
+                <span id="file-count-status">선택된 사진 0장 · 판정 대기 중</span>
+            </div>
+
+            <div style="margin-top: 15px; border-top: 1px solid #e2e8f0; padding-top: 15px;">
+                <div style="font-size: 0.9rem; color: #64748b; font-weight: bold;">전체 정확도 (Accuracy)</div>
+                <div id="total-accuracy-val" class="metric-highlight">0.0% <span id="total-fraction" style="font-size: 1rem; color: #64748b; font-weight: normal;">(0/0)</span></div>
+            </div>
+
+            <div style="margin-top: 10px;">
+                <div style="font-size: 0.8rem; color: #16a348; font-weight: bold;" id="model-status">✔ 모델 로딩 중...</div>
             </div>
         </div>
 
-        <!-- 오른쪽 패널 -->
+        <!-- [2번 영역] 클래스별 정분류율 막대 그래프 -->
         <div class="card">
-            <h2>📈 평가 결과 요약</h2>
-            <div class="metrics-grid">
-                <div class="metric-card">
-                    <div>총 테스트 이미지</div>
-                    <div id="metric-total" class="metric-value">0 장</div>
-                </div>
-                <div class="metric-card">
-                    <div>정분류율 (Accuracy)</div>
-                    <div id="metric-accuracy" class="metric-value">0.0%</div>
-                </div>
+            <h2>2. 클래스별 정분류율</h2>
+            <div id="class-accuracy-container" style="flex: 1; display: flex; flex-direction: column; justify-content: center;">
+                <div style="color: #94a3b8; text-align: center; font-size: 0.85rem;">테스트 평가를 실행하면 클래스별 정분류율이 표시됩니다.</div>
             </div>
+        </div>
 
-            <h2>🧮 혼동행렬 (Confusion Matrix)</h2>
-            <div style="overflow-x: auto;">
+        <!-- [3번 영역] 혼동행렬 (Confusion Matrix) -->
+        <div class="card">
+            <h2>3. 혼동행렬 (행: 실제, 열: 예측)</h2>
+            <div style="overflow-x: auto; flex: 1; display: flex; align-items: center;">
                 <table class="matrix-table" id="confusion-matrix-table">
-                    <!-- 정렬된 표 생성 -->
+                    <tr><td>모델 로드 후 표가 생성됩니다.</td></tr>
                 </table>
             </div>
+        </div>
 
-            <h2 style="margin-top: 20px;">⚠️ 오답 분석 로그</h2>
-            <div id="error-log-container">
-                <div style="color: #94a3b8; text-align: center; padding: 20px;">
-                    테스트 이미지를 업로드하고 평가를 실행해 주세요.
+        <!-- [4번 영역] 틀린 사진 모아 보기 (썸네일 갤러리) -->
+        <div class="card">
+            <h2>4. 틀린 사진 모아 보기 (<span id="wrong-count-title">0장</span>)</h2>
+            <div id="wrong-images-container">
+                <div style="color: #94a3b8; text-align: center; width: 100%; font-size: 0.85rem;">
+                    오인식된 테스트 이미지가 존재하지 않습니다.
                 </div>
             </div>
         </div>
+
     </div>
 
     <div class="privacy-notice">
-        🔒 브라우저 내부에서만 연산이 수행되며 사진 파일은 외부로 전송되지 않습니다.
+        🔒 브라우저 내부에서만 안전하게 연산이 수행되며 사진 파일은 외부 서버로 전송되지 않습니다.
     </div>
 
     <script type="text/javascript">
@@ -259,19 +309,12 @@
             await loadModel();
         };
 
+        // 모델 로드 함수
         async function loadModel() {
             try {
                 model = await tmImage.load(MODEL_URL + "model.json", MODEL_URL + "metadata.json");
                 classLabels = model.getClassLabels();
-                
                 document.getElementById("model-status").innerText = "✔ 모델 로드 완료 (정상)";
-                
-                let labelHtml = "";
-                classLabels.forEach(lbl => {
-                    labelHtml += `- ${lbl}<br>`;
-                });
-                document.getElementById("class-labels").innerHTML = labelHtml;
-
                 buildMatrixTable();
             } catch (err) {
                 console.error(err);
@@ -280,21 +323,21 @@
             }
         }
 
+        // 혼동행렬 표 뼈대 생성
         function buildMatrixTable() {
             const table = document.getElementById("confusion-matrix-table");
             const len = classLabels.length;
 
             let html = `<tr><th colspan="2" rowspan="2">실제 \\ 예측</th><th colspan="${len}">AI 예측 클래스</th></tr>`;
-            
             html += `<tr>`;
             classLabels.forEach(lbl => {
-                html += `<th>${lbl}</th>`;
+                html += `<th>${lbl.replace('class_', '')}</th>`;
             });
             html += `</tr>`;
 
             classLabels.forEach(actual => {
                 html += `<tr>`;
-                html += `<th colspan="2">실제 ${actual}</th>`;
+                html += `<th colspan="2">실제 ${actual.replace('class_', '')}</th>`;
                 classLabels.forEach(pred => {
                     html += `<td id="cell-${actual}-${pred}">0</td>`;
                 });
@@ -304,6 +347,7 @@
             table.innerHTML = html;
         }
 
+        // 성능 평가 실행 핵심 로직
         async function runEvaluation() {
             const fileInput = document.getElementById("test-files");
             const files = fileInput.files;
@@ -318,9 +362,16 @@
                 return;
             }
 
+            document.getElementById("file-count-statusinnerText") = `선택된 사진 ${files.length}장 평가 중...`;
+
             let matrix = {};
+            let classTotal = {};
+            let classCorrect = {};
+
             classLabels.forEach(a => {
                 matrix[a] = {};
+                classTotal[a] = 0;
+                classCorrect[a] = 0;
                 classLabels.forEach(p => {
                     matrix[a][p] = 0;
                 });
@@ -328,9 +379,9 @@
 
             let totalCount = files.length;
             let correctCount = 0;
-            let errorLogs = "";
+            let wrongCardsHTML = "";
 
-            // 큰 숫자(50000 -> 10000 순서)부터 먼저 검사하도록 정렬하여 10000이 먼저 잡히는 오류 원천 차단
+            // 자릿수 큰 숫자 순서대로 정렬하여 파일명 오인식 방지
             const sortedLabels = [...classLabels].sort((a, b) => {
                 const numA = parseInt(a.replace(/[^0-9]/g, '')) || 0;
                 const numB = parseInt(b.replace(/[^0-9]/g, '')) || 0;
@@ -341,24 +392,17 @@
                 const file = files[i];
                 const filenameLower = file.name.toLowerCase();
                 
-                let actualClass = null;
-
+                let actualClass = classLabels[0];
                 for (let lbl of sortedLabels) {
                     const lblLower = lbl.toLowerCase();
-                    if (filenameLower.includes(lblLower)) {
-                        actualClass = lbl;
-                        break;
-                    }
                     const digits = lbl.replace(/[^0-9]/g, '');
-                    if (digits.length > 0 && filenameLower.includes(digits)) {
-                        actualClass = lbl;
-                        break;
-                    }
-                    if ((lblLower.includes("bg") || lblLower.includes("background")) && (filenameLower.includes("bg") || filenameLower.includes("back"))) {
+                    if (filenameLower.includes(lblLower) || (digits.length > 0 && filenameLower.includes(digits))) {
                         actualClass = lbl;
                         break;
                     }
                 }
+
+                classTotal[actualClass]++;
 
                 const imgElement = await loadImage(file);
                 const prediction = await model.predict(imgElement);
@@ -373,25 +417,61 @@
                     }
                 });
 
-                if (!actualClass) {
-                    actualClass = predictedClass;
-                }
-
-                if (matrix[actualClass] && matrix[actualClass][predictedClass] !== undefined) {
-                    matrix[actualClass][predictedClass]++;
-                }
+                matrix[actualClass][predictedClass]++;
 
                 if (actualClass === predictedClass) {
                     correctCount++;
+                    classCorrect[actualClass]++;
                 } else {
-                    errorLogs += `<div class="error-item"><b>[오답]</b> 파일명: ${file.name} | 실제: <b>${actualClass}</b> ➡️ 예측: <span style="color:red;"><b>${predictedClass}</b></span> (${(maxProb*100).toFixed(0)}%)</div>`;
+                    // [4번 영역] 틀린 사진 썸네일 카드 생성 (Base64 이미지 활용)
+                    const reader = new FileReader();
+                    const imageUrl = await new Promise((resolve) => {
+                        const r = new FileReader();
+                        r.onload = (e) => resolve(e.target.result);
+                        r.readAsDataURL(file);
+                    });
+
+                    wrongCardsHTML += `
+                        <div class="wrong-card">
+                            <img src="${imageUrl}" alt="오인식 이미지">
+                            <div class="wrong-info">
+                                <b>${file.name.substring(0, 10)}...</b><br>
+                                <span style="color:#dc2626;">➔ ${predictedClass.replace('class_', '')}</span><br>
+                                <span style="color:#64748b;">(${(maxProb*100).toFixed(0)}%)</span>
+                            </div>
+                        </div>
+                    `;
                 }
             }
 
-            document.getElementById("metric-total").innerText = `${totalCount} 장`;
+            // 전체 정확도 반영
+            document.getElementById("file-count-status").innerText = `선택된 사진 ${totalCount}장 · 판정 완료`;
             let accuracy = totalCount > 0 ? ((correctCount / totalCount) * 100).toFixed(1) : "0.0";
-            document.getElementById("metric-accuracy").innerText = `${accuracy}%`;
+            document.getElementById("total-accuracy-val").innerHTML = `${accuracy}% <span style="font-size: 1rem; color: #64748b; font-weight: normal;">(${correctCount}/${totalCount})</span>`;
 
+            // [2번 영역] 클래스별 정분류율 바 그래프 렌더링
+            let classAccHTML = "";
+            classLabels.forEach(lbl => {
+                let total = classTotal[lbl];
+                let correct = classCorrect[lbl];
+                let acc = total > 0 ? Math.round((correct / total) * 100) : 0;
+                let cleanName = lbl.replace('class_', '');
+                
+                classAccHTML += `
+                    <div class="class-acc-item">
+                        <div style="display: flex; justify-content: space-between;">
+                            <span><b>${cleanName}</b> (${correct}/${total})</span>
+                            <span><b>${acc}%</b></span>
+                        </div>
+                        <div class="bar-container">
+                            <div class="bar-fill" style="width: ${acc}%;"></div>
+                        </div>
+                    </div>
+                `;
+            });
+            document.getElementById("class-accuracy-container").innerHTML = classAccHTML;
+
+            // [3번 영역] 혼동행렬 표 색상 업데이트
             classLabels.forEach(actual => {
                 classLabels.forEach(pred => {
                     const cell = document.getElementById(`cell-${actual}-${pred}`);
@@ -407,8 +487,23 @@
                 });
             });
 
-            const logContainer = document.getElementById("error-log-container");
-            logContainer.innerHTML = errorLogs || `<div style="color: #16a348; text-align: center; padding: 20px;">🎉 오답이 없습니다! 완벽한 정분류율입니다.</div>`;
+            // [4번 영역] 틀린 사진 갤러리 반영
+            const wrongContainer = document.getElementById("wrong-images-container");
+            const wrongCount = totalCount - correctCount;
+            document.getElementById("wrong-count-title").innerText = `${wrongCount}장`;
+            
+            wrongContainer.innerHTML = wrongCardsHTML || `<div style="color: #16a348; text-align: center; width: 100%; font-size: 0.85rem;">🎉 오답 이미지가 없습니다! 완벽한 분류 성능입니다.</div>`;
+        }
+
+        // 초기화 버튼 기능
+        function resetDashboard() {
+            document.getElementById("test-files").value = "";
+            document.getElementById("file-count-status").innerText = "선택된 사진 0장 · 판정 대기 중";
+            document.getElementById("total-accuracy-val").innerHTML = `0.0% <span style="font-size: 1rem; color: #64748b; font-weight: normal;">(0/0)</span>`;
+            document.getElementById("class-accuracy-container").innerHTML = `<div style="color: #94a3b8; text-align: center; font-size: 0.85rem;">테스트 평가를 실행하면 클래스별 정분류율이 표시됩니다.</div>`;
+            buildMatrixTable();
+            document.getElementById("wrong-count-title").innerText = "0장";
+            document.getElementById("wrong-images-container").innerHTML = `<div style="color: #94a3b8; text-align: center; width: 100%; font-size: 0.85rem;">오인식된 테스트 이미지가 존재하지 않습니다.</div>`;
         }
 
         function loadImage(file) {
