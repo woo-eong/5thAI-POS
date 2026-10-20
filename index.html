@@ -10,280 +10,106 @@
     <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@0.8.3/dist/teachablemachine-image.min.js"></script>
 
     <style>
-        * {
-            box-sizing: border-box;
-            font-family: 'Malgun Gothic', 'Noto Sans KR', sans-serif;
-        }
-
         body {
-            background-color: #f0f4f8;
-            margin: 0;
-            padding: 20px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-        }
-
-        header {
+            font-family: 'Malgun Gothic', sans-serif;
+            background-color: #f4f6f9;
             text-align: center;
-            margin-bottom: 20px;
-        }
-
-        h1 {
-            color: #2c3e50;
-            font-size: 1.8rem;
-            margin-bottom: 5px;
-        }
-
-        p.sub-title {
-            color: #7f8c8d;
-            font-size: 1rem;
+            padding: 20px;
             margin: 0;
         }
-
-        .container {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 20px;
-            max-width: 900px;
-            width: 100%;
-            justify-content: center;
-        }
-
-        .card {
+        h1 { color: #2c3e50; }
+        .box {
             background: white;
-            border-radius: 16px;
+            max-width: 400px;
+            margin: 0 auto;
             padding: 20px;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-            flex: 1;
-            min-width: 300px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
+            border-radius: 12px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
         }
-
-        /* 미디어 영역 (좌우반전/거울모드) */
-        #webcam-container, #image-preview-container {
+        #webcam-container {
             width: 280px;
             height: 280px;
-            border: 3px dashed #cbd5e1;
-            border-radius: 12px;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            overflow: hidden;
-            background-color: #f8fafc;
-            position: relative;
-        }
-
-        #webcam-container canvas {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-            transform: scaleX(-1); /* 카메라 좌우 반전 */
-        }
-
-        #image-preview {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-        }
-
-        .btn-group {
-            display: flex;
-            gap: 10px;
-            margin-top: 15px;
-            width: 100%;
-        }
-
-        button, label.file-upload-btn {
-            flex: 1;
-            padding: 14px;
-            border: none;
+            margin: 15px auto;
+            border: 2px dashed #ccc;
             border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            background: #fafafa;
+        }
+        #webcam-container canvas {
+            transform: scaleX(-1); /* 거울모드 좌우반전 */
+            width: 100% !important;
+            height: 100% !important;
+            object-fit: cover;
+        }
+        button {
+            padding: 12px 20px;
+            font-size: 1rem;
+            font-weight: bold;
             background-color: #3b82f6;
             color: white;
-            font-weight: bold;
-            font-size: 1rem;
+            border: none;
+            border-radius: 6px;
             cursor: pointer;
-            text-align: center;
-            transition: background 0.2s;
-            user-select: none;
-        }
-
-        button:hover, label.file-upload-btn:hover {
-            background-color: #2563eb;
-        }
-
-        button:active {
-            transform: scale(0.98);
-        }
-
-        input[type="file"] {
-            display: none;
-        }
-
-        .pos-display {
             width: 100%;
-            text-align: center;
-            background-color: #1e293b;
-            color: #f8fafc;
-            padding: 20px;
-            border-radius: 12px;
-            min-height: 190px;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            position: relative;
+            margin-top: 10px;
         }
-
-        /* 자동 캡처 시 플래시 반짝 효과 */
-        .flash-overlay {
-            position: absolute;
-            top: 0; left: 0; right: 0; bottom: 0;
-            background-color: rgba(255, 255, 255, 0.85);
-            opacity: 0;
-            pointer-events: none;
-            transition: opacity 0.15s ease-out;
-            border-radius: 12px;
+        button:hover { background-color: #2563eb; }
+        .result-box {
+            margin-top: 20px;
+            background: #1e293b;
+            color: white;
+            padding: 15px;
+            border-radius: 8px;
         }
-        .flash-overlay.active {
-            opacity: 1;
-        }
-
-        .product-icon {
-            font-size: 3.5rem;
-            margin-bottom: 10px;
-        }
-
-        .price-text-ko {
-            font-size: 1.1rem;
-            color: #94a3b8;
-        }
-
-        .price-text-en {
-            font-size: 1.4rem;
+        .price-en {
+            font-size: 1.3rem;
             font-weight: bold;
             color: #38bdf8;
             margin-top: 5px;
-        }
-
-        #label-container {
-            width: 100%;
-            margin-top: 15px;
-        }
-
-        .confidence-bar-wrapper {
-            margin-bottom: 8px;
-        }
-
-        .confidence-title {
-            display: flex;
-            justify-content: space-between;
-            font-size: 0.85rem;
-            color: #475569;
-            margin-bottom: 3px;
-        }
-
-        .bar-background {
-            height: 10px;
-            background-color: #e2e8f0;
-            border-radius: 5px;
-            overflow: hidden;
-        }
-
-        .bar-fill {
-            height: 100%;
-            background-color: #10b981;
-            width: 0%;
-            transition: width 0.15s ease-out;
-        }
-
-        .privacy-notice {
-            margin-top: 20px;
-            font-size: 0.8rem;
-            color: #64748b;
-            text-align: center;
         }
     </style>
 </head>
 <body>
 
-    <header>
-        <h1>🛒 AI Market POS</h1>
-        <p class="sub-title">5학년 영어 9단원: "They Are Twenty Thousand Won"</p>
-    </header>
+    <h1>🛒 AI Market POS</h1>
+    <p>5학년 영어 9단원: They Are Twenty Thousand Won</p>
 
-    <div class="container">
-        <!-- 웹캠 및 파일 업로드 패널 -->
-        <div class="card">
-            <div id="webcam-container">
-                <span id="placeholder-text" style="color: #94a3b8; text-align: center; padding: 10px;">
-                    [🎥 카메라 켜기]를 누르고<br>손글씨 가격표를 비춰보세요!
-                </span>
-            </div>
-            <div id="image-preview-container" style="display: none;">
-                <img id="image-preview" src="" alt="업로드 이미지">
-            </div>
+    <div class="box">
+        <div id="webcam-container">카메라가 꺼져 있습니다</div>
+        <button type="button" onclick="init()">🎥 카메라 켜기 / 다시 인식하기</button>
 
-            <div class="btn-group">
-                <button id="btn-webcam" type="button">🎥 카메라 켜기</button>
-                <label for="file-input" class="file-upload-btn">📁 사진 올리기</label>
-                <input type="file" id="file-input" accept="image/*">
-            </div>
+        <div class="result-box">
+            <div id="label-name" style="font-size: 1.1rem; color: #94a3b8;">가격표를 비춰주세요</div>
+            <div id="price-en" class="price-en">Show me the price tag!</div>
         </div>
 
-        <!-- POS 계산 결과 디스플레이 -->
-        <div class="card">
-            <div class="pos-display">
-                <div id="flash-box" class="flash-overlay"></div>
-                <div id="product-icon" class="product-icon">🛍️</div>
-                <div id="price-ko" class="price-text-ko">가격표를 비추면 자동 인식됩니다.</div>
-                <div id="price-en" class="price-text-en">Show me the price tag!</div>
-            </div>
-
-            <!-- 클래스별 실시간 확률 바 -->
-            <div id="label-container"></div>
-        </div>
-    </div>
-
-    <div class="privacy-notice">
-        🔒 <b>개인정보 보호 안내:</b> 모든 데이터는 서버로 전송되지 않으며 기기 내부에서 처리됩니다.
+        <div id="label-container" style="margin-top: 15px; text-align: left; font-size: 0.9rem;"></div>
     </div>
 
     <script type="text/javascript">
-        const MODEL_URL_PATH = "./"; 
+        // 모델이 있는 폴더 경로 (index.html과 같은 위치)
+        const URL_PATH = "./";
 
         let model, webcam, labelContainer, maxPredictions;
-        let isWebcamRunning = false;
+        let isRunning = false;
 
-        let stableCount = 0;
-        let candidateClass = "";
-        const REQUIRED_STABLE_FRAMES = 8; // 약 0.5초 지속 시 캡처
-        let isCaptured = false;
-
-        // 10,000 won 형태의 정돈된 출력용 데이터 매핑
-        const priceDataMap = {
-            "class_10000": { icon: "🧢", ko: "10,000원", en: "They are 10,000 won." },
-            "class_20000": { icon: "👓", ko: "20,000원", en: "They are 20,000 won." },
-            "class_30000": { icon: "👟", ko: "30,000원", en: "They are 30,000 won." },
-            "class_40000": { icon: "🎒", ko: "40,000원", en: "They are 40,000 won." },
-            "class_50000": { icon: "🧥", ko: "50,000원", en: "They are 50,000 won." }
+        // 가격 매핑 (10,000 won 형식)
+        const priceMap = {
+            "class_10000": "They are 10,000 won.",
+            "class_20000": "They are 20,000 won.",
+            "class_30000": "They are 30,000 won.",
+            "class_40000": "They are 40,000 won.",
+            "class_50000": "They are 50,000 won."
         };
 
-        // DOM 로드 완료 후 안전하게 버튼 이벤트 바인딩
-        document.addEventListener("DOMContentLoaded", function() {
-            document.getElementById("btn-webcam").addEventListener("click", handleWebcamButtonClick);
-            document.getElementById("file-input").addEventListener("change", handleImageUpload);
-            loadModel();
-        });
-
-        // 티처블 머신 모델 파일 로드
+        // 페이지 로드 시 모델 불러오기
         async function loadModel() {
             try {
-                const modelURL = MODEL_URL_PATH + "model.json";
-                const metadataURL = MODEL_URL_PATH + "metadata.json";
+                const modelURL = URL_PATH + "model.json";
+                const metadataURL = URL_PATH + "metadata.json";
 
                 model = await tmImage.load(modelURL, metadataURL);
                 maxPredictions = model.getTotalClasses();
@@ -291,204 +117,93 @@
                 labelContainer = document.getElementById("label-container");
                 labelContainer.innerHTML = "";
                 for (let i = 0; i < maxPredictions; i++) {
-                    const classTitle = model.getClassLabels()[i];
-                    const wrapper = document.createElement("div");
-                    wrapper.className = "confidence-bar-wrapper";
-                    wrapper.innerHTML = `
-                        <div class="confidence-title">
-                            <span>${classTitle}</span>
-                            <span id="percent-${i}">0%</span>
-                        </div>
-                        <div class="bar-background">
-                            <div id="bar-${i}" class="bar-fill"></div>
-                        </div>
-                    `;
-                    labelContainer.appendChild(wrapper);
+                    labelContainer.appendChild(document.createElement("div"));
                 }
-            } catch (err) {
-                console.error("모델 로딩 에러:", err);
-                document.getElementById("price-ko").innerText = "모델(.json)을 불러오지 못했습니다.";
+            } catch (e) {
+                console.error(e);
+                document.getElementById("label-name").innerText = "모델 파일을 읽지 못했습니다.";
             }
         }
 
-        // 브라우저 오디오 권한 허용 (TTS 준비)
-        function unlockAudio() {
-            if ('speechSynthesis' in window) {
-                const dummy = new SpeechSynthesisUtterance("");
-                window.speechSynthesis.speak(dummy);
-            }
-        }
-
-        // 웹캠 안전 정지
-        async function stopWebcam() {
-            isWebcamRunning = false;
-            if (webcam) {
-                try {
-                    await webcam.stop();
-                } catch (e) {
-                    console.log("웹캠 정지 중 예외:", e);
-                }
-                webcam = null;
-            }
-        }
-
-        // '카메라 켜기' / '다시 인식하기' 버튼 통합 핸들러
-        async function handleWebcamButtonClick() {
-            unlockAudio();
-
+        // 카메라 시작 및 재시작 함수
+        async function init() {
             if (!model) {
                 await loadModel();
                 if (!model) return;
             }
 
-            // 기존에 카메라가 돌고 있다면 안전하게 정지 후 재시작
-            await stopWebcam();
+            // 이미 실행 중이면 멈춤
+            if (isRunning) {
+                try {
+                    await webcam.stop();
+                } catch(e) {}
+                isRunning = false;
+            }
 
-            document.getElementById("image-preview-container").style.display = "none";
-            const container = document.getElementById("webcam-container");
-            container.style.display = "flex";
-            container.innerHTML = ""; // 화면 초기화
-
-            // 화면 디스플레이 초기화
-            isCaptured = false;
-            stableCount = 0;
-            candidateClass = "";
-            document.getElementById("price-ko").innerText = "가격표를 카메라에 비춰주세요!";
-            document.getElementById("price-en").innerText = "Scanning...";
-            document.getElementById("product-icon").innerText = "📷";
+            const webcamContainer = document.getElementById("webcam-container");
+            webcamContainer.innerHTML = "";
 
             try {
-                const flip = true; 
+                // 웹캠 설정 (가로세로 280px, 거울모드 true)
+                const flip = true;
                 webcam = new tmImage.Webcam(280, 280, flip);
-                await webcam.setup();
+                await webcam.setup(); // 카메라 권한 요청
                 await webcam.play();
-
-                container.appendChild(webcam.canvas);
                 
-                const canvasElement = webcam.canvas;
-                if (canvasElement) canvasElement.setAttribute("playsinline", true);
+                webcamContainer.appendChild(webcam.canvas);
+                
+                const videoEl = webcam.canvas;
+                if(videoEl) videoEl.setAttribute("playsinline", true);
 
-                isWebcamRunning = true;
-                document.getElementById("btn-webcam").innerText = "🔄 다시 인식하기";
+                isRunning = true;
+                window.requestAnimationFrame(loop);
 
-                // 추론 루프 시작
-                window.requestAnimationFrame(webcamLoop);
-
-            } catch (error) {
-                alert("카메라를 켤 수 없습니다. 브라우저의 카메라 허용 권한을 확인해 주세요!");
-                console.error(error);
+            } catch (err) {
+                alert("카메라를 켤 수 없습니다. 브라우저 권한을 확인해주세요.");
+                console.error(err);
+                isRunning = false;
             }
         }
 
-        // 웹캠 애니메이션 지속 루프
-        async function webcamLoop() {
-            if (!isWebcamRunning) return;
-
+        async function loop() {
+            if (!isRunning) return;
             webcam.update();
-            if (!isCaptured) {
-                await predict(webcam.canvas);
-            }
-            window.requestAnimationFrame(webcamLoop);
+            await predict();
+            window.requestAnimationFrame(loop);
         }
 
-        // 단일 이미지 업로드 처리
-        async function handleImageUpload(event) {
-            unlockAudio();
-            const file = event.target.files[0];
-            if (!file) return;
+        async function predict() {
+            if (!model || !webcam) return;
 
-            await stopWebcam();
-            document.getElementById("btn-webcam").innerText = "🎥 카메라 켜기";
-
-            document.getElementById("webcam-container").style.display = "none";
-            const previewContainer = document.getElementById("image-preview-container");
-            const previewImage = document.getElementById("image-preview");
-            previewContainer.style.display = "flex";
-
-            isCaptured = true; 
-
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                previewImage.src = e.target.result;
-                previewImage.onload = async function() {
-                    await predict(previewImage);
-                };
-            };
-            reader.readAsDataURL(file);
-        }
-
-        // AI 확률 추론 및 예외 처리
-        async function predict(imageSource) {
-            if (!model) return;
-
-            const prediction = await model.predict(imageSource);
-
-            let maxConfidence = 0;
-            let topClass = "";
+            const prediction = await model.predict(webcam.canvas);
+            
+            let highestProb = 0;
+            let bestClass = "";
 
             for (let i = 0; i < maxPredictions; i++) {
                 const className = prediction[i].className;
                 const probability = prediction[i].probability;
-                const percent = (probability * 100).toFixed(0);
+                
+                // 확률 바텍스트 표시
+                const classPrediction = `${className}: ${(probability * 100).toFixed(0)}%`;
+                if (labelContainer.childNodes[i]) {
+                    labelContainer.childNodes[i].innerHTML = classPrediction;
+                }
 
-                const percentElem = document.getElementById(`percent-${i}`);
-                const barElem = document.getElementById(`bar-${i}`);
-                if (percentElem) percentElem.innerText = `${percent}%`;
-                if (barElem) barElem.style.width = `${percent}%`;
-
-                if (probability > maxConfidence) {
-                    maxConfidence = probability;
-                    topClass = className;
+                if (probability > highestProb) {
+                    highestProb = probability;
+                    bestClass = className;
                 }
             }
 
-            const CONFIDENCE_THRESHOLD = 0.70; // 70% 임계값
-
-            if (maxConfidence >= CONFIDENCE_THRESHOLD && topClass !== "background") {
-                if (topClass === candidateClass) {
-                    stableCount++;
-                } else {
-                    candidateClass = topClass;
-                    stableCount = 1;
-                }
-
-                // 지정된 프레임 이상 유지 시 결과 확정
-                if (stableCount >= REQUIRED_STABLE_FRAMES) {
-                    triggerAutoCapture(topClass);
-                }
+            // 70폭 이상이고 background가 아닐 때 결과 출력 및 TTS
+            if (highestProb >= 0.70 && bestClass !== "background") {
+                const englishText = priceMap[bestClass] || bestClass;
+                document.getElementById("label-name").innerText = bestClass;
+                document.getElementById("price-en").innerText = englishText;
             } else {
-                stableCount = 0;
-            }
-        }
-
-        // 결과 자동 캡처(고정) 및 TTS 발화
-        function triggerAutoCapture(detectedClass) {
-            isCaptured = true; 
-
-            // 번쩍하는 캡처 비주얼 효과
-            const flash = document.getElementById("flash-box");
-            flash.classList.add("active");
-            setTimeout(() => flash.classList.remove("active"), 200);
-
-            const data = priceDataMap[detectedClass];
-            if (data) {
-                document.getElementById("product-icon").innerText = data.icon;
-                document.getElementById("price-ko").innerText = data.ko;
-                document.getElementById("price-en").className = "price-text-en";
-                document.getElementById("price-en").innerText = data.en;
-
-                speakTTS(data.en);
-            }
-        }
-
-        // TTS 음성 재생
-        function speakTTS(text) {
-            if ('speechSynthesis' in window) {
-                window.speechSynthesis.cancel();
-                const utterance = new SpeechSynthesisUtterance(text);
-                utterance.lang = 'en-US';
-                utterance.rate = 0.85; 
-                window.speechSynthesis.speak(utterance);
+                document.getElementById("label-name").innerText = "인식 중...";
+                document.getElementById("price-en").innerText = "Show me the price tag!";
             }
         }
     </script>
