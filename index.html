@@ -329,3 +329,181 @@
             html += `</tr>`;
 
             classLabels.forEach(actual => {
+                html += `<tr>`;
+                html += `<th colspan="2">실제 ${actual.replace('class_', '')}</th>`;
+                classLabels.forEach(pred => {
+                    html += `<td id="cell-${actual}-${pred}">0</td>`;
+                });
+                html += `</tr>`;
+            });
+
+            table.innerHTML = html;
+        }
+
+        async function runEvaluation() {
+            const fileInput = document.getElementById("test-files");
+            const files = fileInput.files;
+
+            if (files.length === 0) {
+                alert("평가할 테스트 이미지 파일을 최소 1장 이상 선택해 주세요!");
+                return;
+            }
+
+            if (!model) {
+                alert("모델이 아직 로드되지 않았습니다.");
+                return;
+            }
+
+            document.getElementById("file-count-status").innerText = `선택된 사진 ${files.length}장 평가 중...`;
+
+            let matrix = {};
+            let classTotal = {};
+            let classCorrect = {};
+
+            classLabels.forEach(a => {
+                matrix[a] = {};
+                classTotal[a] = 0;
+                classCorrect[a] = 0;
+                classLabels.forEach(p => {
+                    matrix[a][p] = 0;
+                });
+            });
+
+            let totalCount = files.length;
+            let correctCount = 0;
+            let wrongCardsHTML = "";
+
+            const sortedLabels = [...classLabels].sort((a, b) => {
+                const numA = parseInt(a.replace(/[^0-9]/g, '')) || 0;
+                const numB = parseInt(b.replace(/[^0-9]/g, '')) || 0;
+                return numB - numA;
+            });
+
+            for (let i = 0; i < files.length; i++) {
+                const file = files[i];
+                const filenameLower = file.name.toLowerCase();
+                
+                let actualClass = classLabels[0];
+                for (let lbl of sortedLabels) {
+                    const lblLower = lbl.toLowerCase();
+                    const digits = lbl.replace(/[^0-9]/g, '');
+                    if (filenameLower.includes(lblLower) || (digits.length > 0 && filenameLower.includes(digits))) {
+                        actualClass = lbl;
+                        break;
+                    }
+                }
+
+                classTotal[actualClass]++;
+
+                // 이미지 로드 및 데이터 URL 변환 (안정적인 유틸 함수 활용)
+                const imgData = await readImageFile(file);
+                const prediction = await model.predict(imgData.element);
+
+                let maxProb = 0;
+                let predictedClass = classLabels[0];
+
+                prediction.forEach(p => {
+                    if (p.probability > maxProb) {
+                        maxProb = p.probability;
+                        predictedClass = p.className;
+                    }
+                });
+
+                matrix[actualClass][predictedClass]++;
+
+                if (actualClass === predictedClass) {
+                    correctCount++;
+                    classCorrect[actualClass]++;
+                } else {
+                    // 틀린 사진 썸네일 카드 추가
+                    wrongCardsHTML += `
+                        <div class="wrong-card">
+                            <img src="${imgData.dataUrl}" alt="오인식 이미지">
+                            <div class="wrong-info">
+                                <b>${file.name.substring(0, 10)}</b><br>
+                                <span style="color:#dc2626;">➔ ${predictedClass.replace('class_', '')}</span><br>
+                                <span style="color:#64748b;">(${(maxProb*100).toFixed(0)}%)</span>
+                            </div>
+                        </div>
+                    `;
+                }
+            }
+
+            document.getElementById("file-count-status").innerText = `선택된 사진 ${totalCount}장 · 판정 완료`;
+            let accuracy = totalCount > 0 ? ((correctCount / totalCount) * 100).toFixed(1) : "0.0";
+            document.getElementById("total-accuracy-val").innerHTML = `${accuracy}% <span style="font-size: 1rem; color: #64748b; font-weight: normal;">(${correctCount}/${totalCount})</span>`;
+
+            // 클래스별 정분류율 바 그래프 렌더링
+            let classAccHTML = "";
+            classLabels.forEach(lbl => {
+                let total = classTotal[lbl];
+                let correct = classCorrect[lbl];
+                let acc = total > 0 ? Math.round((correct / total) * 100) : 0;
+                let cleanName = lbl.replace('class_', '');
+                
+                classAccHTML += `
+                    <div class="class-acc-item">
+                        <div style="display: flex; justify-content: space-between;">
+                            <span><b>${cleanName}</b> (${correct}/${total})</span>
+                            <span><b>${acc}%</b></span>
+                        </div>
+                        <div class="bar-container">
+                            <div class="bar-fill" style="width: ${acc}%;"></div>
+                        </div>
+                    </div>
+                `;
+            });
+            document.getElementById("class-accuracy-container").innerHTML = classAccHTML;
+
+            // 혼동행렬 표 셀 업데이트
+            classLabels.forEach(actual => {
+                classLabels.forEach(pred => {
+                    const cell = document.getElementById(`cell-${actual}-${pred}`);
+                    if (cell) {
+                        let val = matrix[actual][pred];
+                        cell.innerText = val;
+                        if (actual === pred) {
+                            cell.className = val > 0 ? "correct" : "";
+                        } else {
+                            cell.className = val > 0 ? "incorrect" : "";
+                        }
+                    }
+                });
+            });
+
+            // 틀린 사진 갤러리 반영
+            const wrongContainer = document.getElementById("wrong-images-container");
+            const wrongCount = totalCount - correctCount;
+            document.getElementById("wrong-count-title").innerText = `${wrongCount}장`;
+            
+            wrongContainer.innerHTML = wrongCardsHTML || `<div style="color: #16a348; text-align: center; width: 100%; font-size: 0.85rem;">🎉 오답 이미지가 없습니다! 완벽한 분류 성능입니다.</div>`;
+        }
+
+        function resetDashboard() {
+            document.getElementById("test-files").value = "";
+            document.getElementById("file-count-status").innerText = "선택된 사진 0장 · 판정 대기 중";
+            document.getElementById("total-accuracy-val").innerHTML = `0.0% <span style="font-size: 1rem; color: #64748b; font-weight: normal;">(0/0)</span>`;
+            document.getElementById("class-accuracy-container").innerHTML = `<div style="color: #94a3b8; text-align: center; font-size: 0.85rem;">테스트 평가를 실행하면 클래스별 정분류율이 표시됩니다.</div>`;
+            buildMatrixTable();
+            document.getElementById("wrong-count-title").innerText = "0장";
+            document.getElementById("wrong-images-container").innerHTML = `<div style="color: #94a3b8; text-align: center; width: 100%; font-size: 0.85rem;">오인식된 테스트 이미지가 존재하지 않습니다.</div>`;
+        }
+
+        // 안정적인 이미지 파일 로더 함수
+        function readImageFile(file) {
+            return new Promise((resolve) => {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const dataUrl = e.target.result;
+                    const img = new Image();
+                    img.onload = function() {
+                        resolve({ element: img, dataUrl: dataUrl });
+                    };
+                    img.src = dataUrl;
+                };
+                reader.readAsDataURL(file);
+            });
+        }
+    </script>
+</body>
+</html>
