@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AI Market POS - 5학년 영어 시장놀이 (학생용)</title>
     
-    <!-- 구글 티처블 머신 및 텐서플로우 라이브러리 -->
+    <!-- 가장 안정적인 버전의 텐서플로우 및 티처블 머신 라이브러리 -->
     <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@1.3.1/dist/tf.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@0.8.3/dist/teachablemachine-image.min.js"></script>
 
@@ -252,9 +252,10 @@
         let model, webcam, isWebcamRunning = false;
         let lastSpokenText = "";
 
-        window.onload = async function() {
-            await initModel();
-        };
+        // 문서 로드 완료 시 안정적으로 모델 로드 실행
+        document.addEventListener("DOMContentLoaded", function() {
+            initModel();
+        });
 
         // 1. 모델 로드 함수
         async function initModel() {
@@ -271,7 +272,7 @@
             } catch (err) {
                 console.error(err);
                 statusDiv.style.color = "#dc2626";
-                statusDiv.innerText = "❌ 모델 로드 실패! (model.json 파일 경로 확인)";
+                statusDiv.innerText = "❌ 모델 로드 실패! (파일 경로 또는 깃허브 배포 상태 확인)";
             }
         }
 
@@ -353,25 +354,28 @@
         async function predictMedia(imageSource) {
             if (!model) return;
 
-            const prediction = await model.predict(imageSource);
-            
-            let highestProb = 0;
-            let bestClass = "";
+            try {
+                const prediction = await model.predict(imageSource);
+                
+                let highestProb = 0;
+                let bestClass = "";
 
-            prediction.forEach(p => {
-                if (p.probability > highestProb) {
-                    highestProb = p.probability;
-                    bestClass = p.className;
+                prediction.forEach(p => {
+                    if (p.probability > highestProb) {
+                        highestProb = p.probability;
+                        bestClass = p.className;
+                    }
+                });
+
+                if (highestProb > 0.4) {
+                    updatePOSDisplay(bestClass);
                 }
-            });
-
-            // 최고 확률 클래스로 POS 화면 연동
-            if (highestProb > 0.5) {
-                updatePOSDisplay(bestClass);
+            } catch (err) {
+                console.error("예측 오류:", err);
             }
         }
 
-        // 5. POS 화면 업데이트 및 영어 발화 연동 (가격 매칭 로직 완벽 보완)
+        // 5. POS 화면 업데이트 및 영어 발화 연동
         function updatePOSDisplay(className) {
             const cleanName = className.replace('class_', '').trim();
             const priceDisplay = document.getElementById("recognized-price");
@@ -383,7 +387,6 @@
             let englishSentence = "";
             let imgUrl = "";
 
-            // 숫자 부분만 남기거나 콤마/won 문자열에 상관없이 무조건 판별하는 조건식
             if (cleanName.includes("10000") || cleanName.includes("10,000") || cleanName.includes("1만")) {
                 englishSentence = "They're ten thousand won.";
                 imgUrl = "https://images.unsplash.com/photo-1526170375885-4d8ecf77b99f?w=150";
@@ -396,4 +399,39 @@
             } else if (cleanName.includes("40000") || cleanName.includes("40,000") || cleanName.includes("4만")) {
                 englishSentence = "They're forty thousand won.";
                 imgUrl = "https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=150";
-            } else if (cleanName.includes("50000") || cleanName.includes("50,000") || cleanName.includes("
+            } else if (cleanName.includes("50000") || cleanName.includes("50,000") || cleanName.includes("5만")) {
+                englishSentence = "They're fifty thousand won.";
+                imgUrl = "https://images.unsplash.com/photo-1560343090-f0409e92791a?w=150";
+            } else {
+                englishSentence = "Please show the price card.";
+                imgUrl = "https://via.placeholder.com/140?text=Ready";
+            }
+
+            englishDisplay.innerText = `"${englishSentence}"`;
+            productImg.src = imgUrl;
+
+            if (lastSpokenText !== englishSentence && !cleanName.toLowerCase().includes("background")) {
+                lastSpokenText = englishSentence;
+                speakText(englishSentence);
+            }
+        }
+
+        // 6. TTS 음성 합성
+        function speakText(text) {
+            if ('speechSynthesis' in window) {
+                window.speechSynthesis.cancel();
+                const speech = new SpeechSynthesisUtterance(text);
+                speech.lang = 'en-US';
+                speech.rate = 0.9;
+                window.speechSynthesis.speak(speech);
+            }
+        }
+
+        function speakResult() {
+            if (lastSpokenText) {
+                speakText(lastSpokenText);
+            }
+        }
+    </script>
+</body>
+</html>
