@@ -44,7 +44,7 @@
             display: grid;
             grid-template-columns: 1fr 2fr;
             gap: 20px;
-            max-width: 1100px;
+            max-width: 1150px;
             width: 100%;
         }
 
@@ -132,22 +132,25 @@
             margin-top: 5px;
         }
 
+        /* 혼동행렬 표 스타일 정교화 */
         table.matrix-table {
             width: 100%;
             border-collapse: collapse;
             margin-top: 10px;
-            font-size: 0.85rem;
+            font-size: 0.8rem;
             text-align: center;
         }
 
         table.matrix-table th, table.matrix-table td {
             border: 1px solid #cbd5e1;
-            padding: 8px;
+            padding: 8px 4px;
+            word-break: break-all;
         }
 
         table.matrix-table th {
             background-color: #f1f5f9;
             color: #334155;
+            font-weight: bold;
         }
 
         table.matrix-table td.correct {
@@ -232,7 +235,7 @@
             <h2>🧮 혼동행렬 (Confusion Matrix)</h2>
             <div style="overflow-x: auto;">
                 <table class="matrix-table" id="confusion-matrix-table">
-                    <!-- 동적 생성 -->
+                    <!-- 자바스크립트로 완벽하게 정렬된 표 생성 -->
                 </table>
             </div>
 
@@ -278,25 +281,32 @@
             }
         }
 
-        // 혼동행렬 표 동적 생성 (실제 모델 클래스 명칭 반영)
+        // 혼동행렬 표 구조 완벽 정렬 생성 함수
         function buildMatrixTable() {
             const table = document.getElementById("confusion-matrix-table");
-            let headerRowHTML = `<tr><th colspan="2" rowspan="2">실제 \\ 예측</th><th colspan="${classLabels.length}">AI 예측 클래스</th></tr><tr>`;
-            
-            classLabels.forEach(lbl => {
-                headerRowHTML += `<th>${lbl}</th>`;
-            });
-            headerRowHTML += `</tr>`;
+            const len = classLabels.length;
 
-            classLabels.forEach(actual => {
-                headerRowHTML += `<tr>`;
-                headerRowHTML += `<th>실제 ${actual}</th>`;
-                classLabels.forEach(pred => {
-                    headerRowHTML += `<td id="cell-${actual}-${pred}">0</td>`;
-                });
-                headerRowHTML += `</tr>`;
+            // 1행: 상단 대제목 (AI 예측 클래스)
+            let html = `<tr><th colspan="2" rowspan="2">실제 \\ 예측</th><th colspan="${len}">AI 예측 클래스</th></tr>`;
+            
+            // 2행: 각 예측 클래스 이름
+            html += `<tr>`;
+            classLabels.forEach(lbl => {
+                html += `<th>${lbl}</th>`;
             });
-            table.innerHTML = headerRowHTML;
+            html += `</tr>`;
+
+            // 각 실제 클래스별 행 생성
+            classLabels.forEach(actual => {
+                html += `<tr>`;
+                html += `<th colspan="2">실제 ${actual}</th>`;
+                classLabels.forEach(pred => {
+                    html += `<td id="cell-${actual}-${pred}">0</td>`;
+                });
+                html += `</tr>`;
+            });
+
+            table.innerHTML = html;
         }
 
         async function runEvaluation() {
@@ -328,7 +338,6 @@
             for (let i = 0; i < files.length; i++) {
                 const file = files[i];
                 
-                // 파일 이름에 클래스 이름(예: 10000, 20000 등)이 포함되어 있으면 실제 값으로 매칭, 없으면 첫 번째 클래스로 지정
                 let actualClass = classLabels[0];
                 for (let lbl of classLabels) {
                     if (file.name.toLowerCase().includes(lbl.toLowerCase())) {
