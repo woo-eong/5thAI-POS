@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AI Market POS - 5학년 영어 시장놀이 (학생용)</title>
     
-    <!-- 가장 안정적인 버전의 텐서플로우 및 티처블 머신 라이브러리 -->
+    <!-- 구글 티처블 머신 및 텐서플로우 라이브러리 -->
     <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@1.3.1/dist/tf.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@0.8.3/dist/teachablemachine-image.min.js"></script>
 
@@ -91,10 +91,15 @@
             position: relative;
         }
 
-        #media-preview-container img {
+        #media-preview-container video, #media-preview-container img {
             width: 100%;
             height: 100%;
             object-fit: cover;
+            transform: scaleX(-1); /* 좌우 반전 */
+        }
+
+        #media-preview-container img {
+            transform: none;
         }
 
         button.primary-btn {
@@ -249,10 +254,9 @@
 
     <script type="text/javascript">
         const MODEL_URL = "./";
-        let model, webcam, isWebcamRunning = false;
+        let model, videoElement, stream, isWebcamRunning = false;
         let lastSpokenText = "";
 
-        // 문서 로드 완료 시 안정적으로 모델 로드 실행
         document.addEventListener("DOMContentLoaded", function() {
             initModel();
         });
@@ -272,11 +276,11 @@
             } catch (err) {
                 console.error(err);
                 statusDiv.style.color = "#dc2626";
-                statusDiv.innerText = "❌ 모델 로드 실패! (파일 경로 또는 깃허브 배포 상태 확인)";
+                statusDiv.innerText = "❌ 모델 로드 실패! (파일 경로 확인)";
             }
         }
 
-        // 2. 실시간 웹캠 스캔 처리
+        // 2. 브라우저 표준 웹캠 API 직접 실행
         async function startWebcam() {
             if (isWebcamRunning) return;
 
@@ -285,36 +289,40 @@
 
             try {
                 startBtn.disabled = true;
-                statusDiv.innerText = "📷 카메라 권한 확인 중...";
+                statusDiv.innerText = "📷 카메라 권한 요청 중...";
 
-                const flip = true; 
-                webcam = new tmImage.Webcam(224, 224, flip); 
-                await webcam.setup();
-                await webcam.play();
-                
-                isWebcamRunning = true;
-                window.requestAnimationFrame(loop);
+                // 브라우저 표준 비디오 스트림 연결
+                stream = await navigator.mediaDevices.getUserMedia({ 
+                    video: { width: 224, height: 224, facingMode: "user" } 
+                });
 
-                const container = document.getElementById("media-preview-container");
+                container = document.getElementById("media-preview-container");
                 container.innerHTML = "";
-                container.appendChild(webcam.canvas);
-                
+
+                videoElement = document.createElement("video");
+                videoElement.srcObject = stream;
+                videoElement.autoplay = true;
+                videoElement.playsInline = true;
+                container.appendChild(videoElement);
+
+                isWebcamRunning = true;
                 statusDiv.style.color = "#16a348";
                 statusDiv.innerText = "✔ 실시간 카메라 스캔 작동 중...";
                 startBtn.innerText = "📷 카메라 작동 중";
+
+                window.requestAnimationFrame(loop);
             } catch (err) {
                 console.error(err);
-                alert("웹캠을 켤 수 없습니다. 브라우저 카메라 권한을 확인해 주세요.");
+                alert("카메라 권한을 얻을 수 없습니다. 브라우저 주소창 왼쪽 자물쇠 아이콘에서 카메라 권한을 '허용'해 주세요.");
                 statusDiv.style.color = "#dc2626";
-                statusDiv.innerText = "❌ 카메라 실행 실패";
+                statusDiv.innerText = "❌ 카메라 실행 실패 (권한 차단됨)";
                 startBtn.disabled = false;
             }
         }
 
         async function loop() {
-            if (!isWebcamRunning) return;
-            webcam.update();
-            await predictMedia(webcam.canvas);
+            if (!isWebcamRunning || !videoElement) return;
+            await predictMedia(videoElement);
             window.requestAnimationFrame(loop);
         }
 
@@ -323,8 +331,9 @@
             const file = event.target.files[0];
             if (!file || !model) return;
 
-            if (isWebcamRunning && webcam) {
-                webcam.stop();
+            // 카메라 정지
+            if (isWebcamRunning && stream) {
+                stream.getTracks().forEach(track => track.stop());
                 isWebcamRunning = false;
                 document.getElementById("start-btn").disabled = false;
                 document.getElementById("start-btn").innerText = "📷 실시간 카메라 스캔 켜기";
