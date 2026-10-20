@@ -62,6 +62,7 @@
             align-items: center;
         }
 
+        /* 미디어 영역 (좌우반전/거울모드) */
         #webcam-container, #image-preview-container {
             width: 280px;
             height: 280px;
@@ -79,7 +80,7 @@
             width: 100%;
             height: 100%;
             object-fit: cover;
-            transform: scaleX(-1); /* 거울 모드 좌우 반전 */
+            transform: scaleX(-1); /* 카메라 좌우 반전 */
         }
 
         #image-preview {
@@ -97,20 +98,25 @@
 
         button, label.file-upload-btn {
             flex: 1;
-            padding: 12px;
+            padding: 14px;
             border: none;
             border-radius: 8px;
             background-color: #3b82f6;
             color: white;
             font-weight: bold;
-            font-size: 0.95rem;
+            font-size: 1rem;
             cursor: pointer;
             text-align: center;
             transition: background 0.2s;
+            user-select: none;
         }
 
         button:hover, label.file-upload-btn:hover {
             background-color: #2563eb;
+        }
+
+        button:active {
+            transform: scale(0.98);
         }
 
         input[type="file"] {
@@ -132,13 +138,14 @@
             position: relative;
         }
 
+        /* 자동 캡처 시 플래시 반짝 효과 */
         .flash-overlay {
             position: absolute;
             top: 0; left: 0; right: 0; bottom: 0;
-            background-color: rgba(255, 255, 255, 0.8);
+            background-color: rgba(255, 255, 255, 0.85);
             opacity: 0;
             pointer-events: none;
-            transition: opacity 0.2s ease-out;
+            transition: opacity 0.15s ease-out;
             border-radius: 12px;
         }
         .flash-overlay.active {
@@ -196,162 +203,4 @@
         .privacy-notice {
             margin-top: 20px;
             font-size: 0.8rem;
-            color: #64748b;
-            text-align: center;
-        }
-    </style>
-</head>
-<body>
-
-    <header>
-        <h1>🛒 AI Market POS</h1>
-        <p class="sub-title">5학년 영어 9단원: "They Are Twenty Thousand Won"</p>
-    </header>
-
-    <div class="container">
-        <!-- 카메라 및 사진 업로드 영역 -->
-        <div class="card">
-            <div id="webcam-container">
-                <span id="placeholder-text" style="color: #94a3b8; text-align: center; padding: 10px;">
-                    [🎥 카메라 켜기]를 누르고<br>가격표를 비춰보세요!
-                </span>
-            </div>
-            <div id="image-preview-container" style="display: none;">
-                <img id="image-preview" src="" alt="업로드 이미지">
-            </div>
-
-            <div class="btn-group">
-                <button id="btn-webcam" onclick="initWebcam()">🎥 카메라 켜기</button>
-                <label for="file-input" class="file-upload-btn">📁 사진 올리기</label>
-                <input type="file" id="file-input" accept="image/*" onchange="handleImageUpload(event)">
-            </div>
-        </div>
-
-        <!-- POS 결과 화면 -->
-        <div class="card">
-            <div class="pos-display">
-                <div id="flash-box" class="flash-overlay"></div>
-                <div id="product-icon" class="product-icon">🛍️</div>
-                <div id="price-ko" class="price-text-ko">가격표를 카메라에 대면 자동 인식됩니다.</div>
-                <div id="price-en" class="price-text-en">Show me the price tag!</div>
-            </div>
-
-            <div id="label-container"></div>
-        </div>
-    </div>
-
-    <div class="privacy-notice">
-        🔒 <b>개인정보 보호 안내:</b> 모든 영상 및 사진 데이터는 외부 서버로 전송되지 않으며, 기기 내에서 안전하게 처리됩니다.
-    </div>
-
-    <script type="text/javascript">
-        const URL = "./"; 
-
-        let model, webcam, labelContainer, maxPredictions;
-        let isWebcamActive = false;
-
-        let stableCount = 0;
-        let lastDetectedClass = "";
-        const REQUIRED_FRAMES = 8; 
-        let isCaptured = false;
-
-        const priceDataMap = {
-            "class_10000": { icon: "🧢", ko: "10,000원", en: "They are 10,000 won." },
-            "class_20000": { icon: "👓", ko: "20,000원", en: "They are 20,000 won." },
-            "class_30000": { icon: "👟", ko: "30,000원", en: "They are 30,000 won." },
-            "class_40000": { icon: "🎒", ko: "40,000원", en: "They are forty thousand won." }, // 예외 방어용 유지
-            "class_50000": { icon: "🧥", ko: "50,000원", en: "They are fifty thousand won." }
-        };
-
-        window.onload = async function() {
-            await loadModel();
-        };
-
-        async function loadModel() {
-            const modelURL = URL + "model.json";
-            const metadataURL = URL + "metadata.json";
-
-            try {
-                model = await tmImage.load(modelURL, metadataURL);
-                maxPredictions = model.getTotalClasses();
-
-                labelContainer = document.getElementById("label-container");
-                labelContainer.innerHTML = "";
-                for (let i = 0; i < maxPredictions; i++) {
-                    const classTitle = model.getClassLabels()[i];
-                    const wrapper = document.createElement("div");
-                    wrapper.className = "confidence-bar-wrapper";
-                    wrapper.innerHTML = `
-                        <div class="confidence-title">
-                            <span>${classTitle}</span>
-                            <span id="percent-${i}">0%</span>
-                        </div>
-                        <div class="bar-background">
-                            <div id="bar-${i}" class="bar-fill"></div>
-                        </div>
-                    `;
-                    labelContainer.appendChild(wrapper);
-                }
-            } catch (error) {
-                console.error("모델 로드 실패:", error);
-                document.getElementById("price-ko").innerText = "모델 파일을 불러올 수 없습니다.";
-            }
-        }
-
-        function unlockAudio() {
-            if ('speechSynthesis' in window) {
-                const dummy = new SpeechSynthesisUtterance("");
-                window.speechSynthesis.speak(dummy);
-            }
-        }
-
-        // 웹캠 안전 종료 함수
-        async function stopWebcam() {
-            if (webcam) {
-                try {
-                    await webcam.stop();
-                } catch (e) {
-                    console.log("웹캠 정지 중 예외 발생 (무시 가능):", e);
-                }
-                webcam = null;
-            }
-            isWebcamActive = false;
-        }
-
-        // 카메라 켜기 / 다시 인식하기 버튼 통합 함수
-        async function initWebcam() {
-            unlockAudio();
-            if (!model) await loadModel();
-
-            // 1. 기존 카메라가 켜져 있다면 완전히 끄고 DOM 컨테이너를 비움
-            if (isWebcamActive) {
-                await stopWebcam();
-            }
-
-            document.getElementById("image-preview-container").style.display = "none";
-            const webcamContainer = document.getElementById("webcam-container");
-            webcamContainer.style.display = "flex";
-            webcamContainer.innerHTML = ""; // 기존 비디오 태그나 캔버스 완전 삭제
-
-            // 2. 상태값 초기화
-            isCaptured = false;
-            stableCount = 0;
-            lastDetectedClass = "";
-            document.getElementById("price-ko").innerText = "가격표를 카메라에 비춰주세요!";
-            document.getElementById("price-en").innerText = "Scanning...";
-            document.getElementById("product-icon").innerText = "📷";
-
-            try {
-                // 3. 새 웹캠 객체 생성 및 실행
-                const flip = true; 
-                webcam = new tmImage.Webcam(280, 280, flip);
-                await webcam.setup(); // 카메라 권한 요청 및 스트림 연결
-                await webcam.play();
-                
-                webcamContainer.appendChild(webcam.canvas);
-                
-                const videoElement = webcam.canvas;
-                if(videoElement) videoElement.setAttribute("playsinline", true);
-
-                isWebcamActive = true;
-                document.getElementById("
+            color: #647
