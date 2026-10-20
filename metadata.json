@@ -1,1 +1,1 @@
-{"tfjsVersion":"1.7.4","tmVersion":"2.4.18","packageVersion":"0.8.4-alpha2","packageName":"@teachablemachine/image","timeStamp":"2026-10-19T05:10:03.195Z","userMetadata":{},"modelName":"내 image 모델","labels":["10000","20000","30000","40000","50000"],"imageSize":224}
+{"tfjsVersion":"1.7.4","tmVersion":"2.4.18","packageVersion":"0.8.4-alpha2","packageName":"@teachablemachine/image","timeStamp":"2026-10-20T05:24:43.570Z","userMetadata":{},"modelName":"내 image 모델","labels":["10,000won","20,000won","30,000won","40,000won","50,000won","background"],"imageSize":224}
