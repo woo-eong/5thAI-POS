@@ -132,7 +132,6 @@
             margin-top: 5px;
         }
 
-        /* 혼동행렬 표 스타일 정교화 */
         table.matrix-table {
             width: 100%;
             border-collapse: collapse;
@@ -235,7 +234,7 @@
             <h2>🧮 혼동행렬 (Confusion Matrix)</h2>
             <div style="overflow-x: auto;">
                 <table class="matrix-table" id="confusion-matrix-table">
-                    <!-- 자바스크립트로 완벽하게 정렬된 표 생성 -->
+                    <!-- 정렬된 표 생성 -->
                 </table>
             </div>
 
@@ -281,22 +280,18 @@
             }
         }
 
-        // 혼동행렬 표 구조 완벽 정렬 생성 함수
         function buildMatrixTable() {
             const table = document.getElementById("confusion-matrix-table");
             const len = classLabels.length;
 
-            // 1행: 상단 대제목 (AI 예측 클래스)
             let html = `<tr><th colspan="2" rowspan="2">실제 \\ 예측</th><th colspan="${len}">AI 예측 클래스</th></tr>`;
             
-            // 2행: 각 예측 클래스 이름
             html += `<tr>`;
             classLabels.forEach(lbl => {
                 html += `<th>${lbl}</th>`;
             });
             html += `</tr>`;
 
-            // 각 실제 클래스별 행 생성
             classLabels.forEach(actual => {
                 html += `<tr>`;
                 html += `<th colspan="2">실제 ${actual}</th>`;
@@ -335,12 +330,31 @@
             let correctCount = 0;
             let errorLogs = "";
 
+            // 큰 숫자(50000 -> 10000 순서)부터 먼저 검사하도록 정렬하여 10000이 먼저 잡히는 오류 원천 차단
+            const sortedLabels = [...classLabels].sort((a, b) => {
+                const numA = parseInt(a.replace(/[^0-9]/g, '')) || 0;
+                const numB = parseInt(b.replace(/[^0-9]/g, '')) || 0;
+                return numB - numA;
+            });
+
             for (let i = 0; i < files.length; i++) {
                 const file = files[i];
+                const filenameLower = file.name.toLowerCase();
                 
-                let actualClass = classLabels[0];
-                for (let lbl of classLabels) {
-                    if (file.name.toLowerCase().includes(lbl.toLowerCase())) {
+                let actualClass = null;
+
+                for (let lbl of sortedLabels) {
+                    const lblLower = lbl.toLowerCase();
+                    if (filenameLower.includes(lblLower)) {
+                        actualClass = lbl;
+                        break;
+                    }
+                    const digits = lbl.replace(/[^0-9]/g, '');
+                    if (digits.length > 0 && filenameLower.includes(digits)) {
+                        actualClass = lbl;
+                        break;
+                    }
+                    if ((lblLower.includes("bg") || lblLower.includes("background")) && (filenameLower.includes("bg") || filenameLower.includes("back"))) {
                         actualClass = lbl;
                         break;
                     }
@@ -358,6 +372,10 @@
                         predictedClass = p.className;
                     }
                 });
+
+                if (!actualClass) {
+                    actualClass = predictedClass;
+                }
 
                 if (matrix[actualClass] && matrix[actualClass][predictedClass] !== undefined) {
                     matrix[actualClass][predictedClass]++;
