@@ -76,7 +76,6 @@
             margin-bottom: 15px;
         }
 
-        /* 컨트롤 영역 버튼 스타일 */
         .btn-group {
             display: flex;
             gap: 10px;
@@ -125,7 +124,6 @@
             cursor: pointer;
         }
 
-        /* 전체 정률 및 수치 박스 */
         .metric-highlight {
             font-size: 1.8rem;
             font-weight: bold;
@@ -133,7 +131,6 @@
             margin: 5px 0;
         }
 
-        /* 클래스별 정분류율 바 그래프 스타일 */
         .class-acc-item {
             margin-bottom: 10px;
             font-size: 0.85rem;
@@ -156,7 +153,6 @@
             transition: width 0.4s ease;
         }
 
-        /* 혼동행렬 표 스타일 */
         table.matrix-table {
             width: 100%;
             border-collapse: collapse;
@@ -186,7 +182,7 @@
             color: #991b1b;
         }
 
-        /* 4번 영역: 틀린 사진 갤러리 카드 스타일 (예시 화면 반영) */
+        /* 4번 영역: 틀린 사진 갤러리 카드 스타일 */
         #wrong-images-container {
             display: flex;
             gap: 12px;
@@ -237,10 +233,9 @@
         <p class="sub-title">중간과제 제출용: 모델 검증, 혼동행렬, 클래스별 정분류율 및 오답 이미지 시각화</p>
     </header>
 
-    <!-- 4분할 대시보드 그리드 컨테이너 -->
     <div class="dashboard-grid">
         
-        <!-- [1번 영역] 테스트 사진 넣기 및 전체 정확도 요약 -->
+        <!-- [1번 영역] 테스트 사진 넣기 -->
         <div class="card">
             <h2>1. 테스트 사진 넣기</h2>
             <div class="control-group">
@@ -267,7 +262,7 @@
             </div>
         </div>
 
-        <!-- [2번 영역] 클래스별 정분류율 막대 그래프 -->
+        <!-- [2번 영역] 클래스별 정분류율 -->
         <div class="card">
             <h2>2. 클래스별 정분류율</h2>
             <div id="class-accuracy-container" style="flex: 1; display: flex; flex-direction: column; justify-content: center;">
@@ -275,7 +270,7 @@
             </div>
         </div>
 
-        <!-- [3번 영역] 혼동행렬 (Confusion Matrix) -->
+        <!-- [3번 영역] 혼동행렬 -->
         <div class="card">
             <h2>3. 혼동행렬 (행: 실제, 열: 예측)</h2>
             <div style="overflow-x: auto; flex: 1; display: flex; align-items: center;">
@@ -285,7 +280,7 @@
             </div>
         </div>
 
-        <!-- [4번 영역] 틀린 사진 모아 보기 (썸네일 갤러리) -->
+        <!-- [4번 영역] 틀린 사진 모아 보기 -->
         <div class="card">
             <h2>4. 틀린 사진 모아 보기 (<span id="wrong-count-title">0장</span>)</h2>
             <div id="wrong-images-container">
@@ -309,7 +304,6 @@
             await loadModel();
         };
 
-        // 모델 로드 함수
         async function loadModel() {
             try {
                 model = await tmImage.load(MODEL_URL + "model.json", MODEL_URL + "metadata.json");
@@ -323,7 +317,6 @@
             }
         }
 
-        // 혼동행렬 표 뼈대 생성
         function buildMatrixTable() {
             const table = document.getElementById("confusion-matrix-table");
             const len = classLabels.length;
@@ -336,189 +329,3 @@
             html += `</tr>`;
 
             classLabels.forEach(actual => {
-                html += `<tr>`;
-                html += `<th colspan="2">실제 ${actual.replace('class_', '')}</th>`;
-                classLabels.forEach(pred => {
-                    html += `<td id="cell-${actual}-${pred}">0</td>`;
-                });
-                html += `</tr>`;
-            });
-
-            table.innerHTML = html;
-        }
-
-        // 성능 평가 실행 핵심 로직
-        async function runEvaluation() {
-            const fileInput = document.getElementById("test-files");
-            const files = fileInput.files;
-
-            if (files.length === 0) {
-                alert("평가할 테스트 이미지 파일을 최소 1장 이상 선택해 주세요!");
-                return;
-            }
-
-            if (!model) {
-                alert("모델이 아직 로드되지 않았습니다.");
-                return;
-            }
-
-            document.getElementById("file-count-statusinnerText") = `선택된 사진 ${files.length}장 평가 중...`;
-
-            let matrix = {};
-            let classTotal = {};
-            let classCorrect = {};
-
-            classLabels.forEach(a => {
-                matrix[a] = {};
-                classTotal[a] = 0;
-                classCorrect[a] = 0;
-                classLabels.forEach(p => {
-                    matrix[a][p] = 0;
-                });
-            });
-
-            let totalCount = files.length;
-            let correctCount = 0;
-            let wrongCardsHTML = "";
-
-            // 자릿수 큰 숫자 순서대로 정렬하여 파일명 오인식 방지
-            const sortedLabels = [...classLabels].sort((a, b) => {
-                const numA = parseInt(a.replace(/[^0-9]/g, '')) || 0;
-                const numB = parseInt(b.replace(/[^0-9]/g, '')) || 0;
-                return numB - numA;
-            });
-
-            for (let i = 0; i < files.length; i++) {
-                const file = files[i];
-                const filenameLower = file.name.toLowerCase();
-                
-                let actualClass = classLabels[0];
-                for (let lbl of sortedLabels) {
-                    const lblLower = lbl.toLowerCase();
-                    const digits = lbl.replace(/[^0-9]/g, '');
-                    if (filenameLower.includes(lblLower) || (digits.length > 0 && filenameLower.includes(digits))) {
-                        actualClass = lbl;
-                        break;
-                    }
-                }
-
-                classTotal[actualClass]++;
-
-                const imgElement = await loadImage(file);
-                const prediction = await model.predict(imgElement);
-
-                let maxProb = 0;
-                let predictedClass = classLabels[0];
-
-                prediction.forEach(p => {
-                    if (p.probability > maxProb) {
-                        maxProb = p.probability;
-                        predictedClass = p.className;
-                    }
-                });
-
-                matrix[actualClass][predictedClass]++;
-
-                if (actualClass === predictedClass) {
-                    correctCount++;
-                    classCorrect[actualClass]++;
-                } else {
-                    // [4번 영역] 틀린 사진 썸네일 카드 생성 (Base64 이미지 활용)
-                    const reader = new FileReader();
-                    const imageUrl = await new Promise((resolve) => {
-                        const r = new FileReader();
-                        r.onload = (e) => resolve(e.target.result);
-                        r.readAsDataURL(file);
-                    });
-
-                    wrongCardsHTML += `
-                        <div class="wrong-card">
-                            <img src="${imageUrl}" alt="오인식 이미지">
-                            <div class="wrong-info">
-                                <b>${file.name.substring(0, 10)}...</b><br>
-                                <span style="color:#dc2626;">➔ ${predictedClass.replace('class_', '')}</span><br>
-                                <span style="color:#64748b;">(${(maxProb*100).toFixed(0)}%)</span>
-                            </div>
-                        </div>
-                    `;
-                }
-            }
-
-            // 전체 정확도 반영
-            document.getElementById("file-count-status").innerText = `선택된 사진 ${totalCount}장 · 판정 완료`;
-            let accuracy = totalCount > 0 ? ((correctCount / totalCount) * 100).toFixed(1) : "0.0";
-            document.getElementById("total-accuracy-val").innerHTML = `${accuracy}% <span style="font-size: 1rem; color: #64748b; font-weight: normal;">(${correctCount}/${totalCount})</span>`;
-
-            // [2번 영역] 클래스별 정분류율 바 그래프 렌더링
-            let classAccHTML = "";
-            classLabels.forEach(lbl => {
-                let total = classTotal[lbl];
-                let correct = classCorrect[lbl];
-                let acc = total > 0 ? Math.round((correct / total) * 100) : 0;
-                let cleanName = lbl.replace('class_', '');
-                
-                classAccHTML += `
-                    <div class="class-acc-item">
-                        <div style="display: flex; justify-content: space-between;">
-                            <span><b>${cleanName}</b> (${correct}/${total})</span>
-                            <span><b>${acc}%</b></span>
-                        </div>
-                        <div class="bar-container">
-                            <div class="bar-fill" style="width: ${acc}%;"></div>
-                        </div>
-                    </div>
-                `;
-            });
-            document.getElementById("class-accuracy-container").innerHTML = classAccHTML;
-
-            // [3번 영역] 혼동행렬 표 색상 업데이트
-            classLabels.forEach(actual => {
-                classLabels.forEach(pred => {
-                    const cell = document.getElementById(`cell-${actual}-${pred}`);
-                    if (cell) {
-                        let val = matrix[actual][pred];
-                        cell.innerText = val;
-                        if (actual === pred) {
-                            cell.className = val > 0 ? "correct" : "";
-                        } else {
-                            cell.className = val > 0 ? "incorrect" : "";
-                        }
-                    }
-                });
-            });
-
-            // [4번 영역] 틀린 사진 갤러리 반영
-            const wrongContainer = document.getElementById("wrong-images-container");
-            const wrongCount = totalCount - correctCount;
-            document.getElementById("wrong-count-title").innerText = `${wrongCount}장`;
-            
-            wrongContainer.innerHTML = wrongCardsHTML || `<div style="color: #16a348; text-align: center; width: 100%; font-size: 0.85rem;">🎉 오답 이미지가 없습니다! 완벽한 분류 성능입니다.</div>`;
-        }
-
-        // 초기화 버튼 기능
-        function resetDashboard() {
-            document.getElementById("test-files").value = "";
-            document.getElementById("file-count-status").innerText = "선택된 사진 0장 · 판정 대기 중";
-            document.getElementById("total-accuracy-val").innerHTML = `0.0% <span style="font-size: 1rem; color: #64748b; font-weight: normal;">(0/0)</span>`;
-            document.getElementById("class-accuracy-container").innerHTML = `<div style="color: #94a3b8; text-align: center; font-size: 0.85rem;">테스트 평가를 실행하면 클래스별 정분류율이 표시됩니다.</div>`;
-            buildMatrixTable();
-            document.getElementById("wrong-count-title").innerText = "0장";
-            document.getElementById("wrong-images-container").innerHTML = `<div style="color: #94a3b8; text-align: center; width: 100%; font-size: 0.85rem;">오인식된 테스트 이미지가 존재하지 않습니다.</div>`;
-        }
-
-        function loadImage(file) {
-            return new Promise((resolve) => {
-                const img = new Image();
-                const reader = new FileReader();
-                reader.onload = function(e) {
-                    img.src = e.target.result;
-                    img.onload = function() {
-                        resolve(img);
-                    }
-                };
-                reader.readAsDataURL(file);
-            });
-        }
-    </script>
-</body>
-</html>
