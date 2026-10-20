@@ -3,208 +3,427 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI Market POS - 5학년 영어 시장놀이</title>
+    <title>AI Market POS - 교사용 평가 대시보드 (혼동행렬 및 성능 분석)</title>
     
     <!-- 티처블머신 공식 TensorFlow.js 및 Teachable Machine Image 라이브러리 -->
     <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@1.3.1/dist/tf.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@0.8.3/dist/teachablemachine-image.min.js"></script>
 
     <style>
+        * {
+            box-sizing: border-box;
+            font-family: 'Malgun Gothic', 'Noto Sans KR', sans-serif;
+        }
+
         body {
-            font-family: 'Malgun Gothic', sans-serif;
-            background-color: #f4f6f9;
+            background-color: #f1f5f9;
+            margin: 0;
+            padding: 30px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        header {
             text-align: center;
-            padding: 20px;
+            margin-bottom: 25px;
+        }
+
+        h1 {
+            color: #1e293b;
+            font-size: 1.8rem;
+            margin-bottom: 8px;
+        }
+
+        p.sub-title {
+            color: #64748b;
+            font-size: 1rem;
             margin: 0;
         }
-        h1 { color: #2c3e50; }
-        .box {
+
+        .dashboard-container {
+            display: grid;
+            grid-template-columns: 1fr 2fr;
+            gap: 20px;
+            max-width: 1100px;
+            width: 100%;
+        }
+
+        @media (max-width: 768px) {
+            .dashboard-container {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .card {
             background: white;
-            max-width: 400px;
-            margin: 0 auto;
+            border-radius: 16px;
             padding: 20px;
-            border-radius: 12px;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
-        }
-        #webcam-container {
-            width: 280px;
-            height: 280px;
-            margin: 15px auto;
-            border: 2px dashed #ccc;
-            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
             display: flex;
-            align-items: center;
-            justify-content: center;
-            overflow: hidden;
-            background: #fafafa;
+            flex-direction: column;
         }
-        #webcam-container canvas {
-            transform: scaleX(-1); /* 거울모드 좌우반전 */
-            width: 100% !important;
-            height: 100% !important;
-            object-fit: cover;
+
+        h2 {
+            font-size: 1.2rem;
+            color: #334155;
+            margin-top: 0;
+            border-bottom: 2px solid #e2e8f0;
+            padding-bottom: 10px;
         }
-        button {
-            padding: 12px 20px;
-            font-size: 1rem;
+
+        /* 컨트롤 영역 */
+        .control-group {
+            margin-bottom: 15px;
+        }
+
+        label {
             font-weight: bold;
-            background-color: #3b82f6;
+            font-size: 0.9rem;
+            color: #475569;
+            display: block;
+            margin-bottom: 5px;
+        }
+
+        input[type="file"] {
+            width: 100%;
+            padding: 10px;
+            background: #f8fafc;
+            border: 1px dashed #cbd5e1;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+
+        button.eval-btn {
+            width: 100%;
+            padding: 12px;
+            background-color: #2563eb;
             color: white;
             border: none;
-            border-radius: 6px;
+            border-radius: 8px;
+            font-weight: bold;
+            font-size: 1rem;
             cursor: pointer;
-            width: 100%;
+            transition: background 0.2s;
             margin-top: 10px;
         }
-        button:hover { background-color: #2563eb; }
-        .result-box {
-            margin-top: 20px;
-            background: #1e293b;
-            color: white;
-            padding: 15px;
-            border-radius: 8px;
+
+        button.eval-btn:hover {
+            background-color: #1d4ed8;
         }
-        .price-en {
-            font-size: 1.3rem;
+
+        /* 메트릭 요약 박스 */
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .metric-card {
+            background: #f8fafc;
+            padding: 12px;
+            border-radius: 8px;
+            text-align: center;
+            border: 1px solid #e2e8f0;
+        }
+
+        .metric-value {
+            font-size: 1.4rem;
             font-weight: bold;
-            color: #38bdf8;
+            color: #2563eb;
             margin-top: 5px;
+        }
+
+        /* 혼동행렬 테이블 스타일 */
+        table.matrix-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+            font-size: 0.85rem;
+            text-align: center;
+        }
+
+        table.matrix-table th, table.matrix-table td {
+            border: 1px solid #cbd5e1;
+            padding: 8px;
+        }
+
+        table.matrix-table th {
+            background-color: #f1f5f9;
+            color: #334155;
+        }
+
+        table.matrix-table td.correct {
+            background-color: #dcfce7;
+            font-weight: bold;
+            color: #166534;
+        }
+
+        table.matrix-table td.incorrect {
+            background-color: #fee2e2;
+            color: #991b1b;
+        }
+
+        /* 오답 로그 영역 */
+        #error-log-container {
+            max-height: 200px;
+            overflow-y: auto;
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 10px;
+            font-size: 0.85rem;
+        }
+
+        .error-item {
+            padding: 6px;
+            border-bottom: 1px solid #e2e8f0;
+            color: #475569;
+        }
+
+        .privacy-notice {
+            margin-top: 20px;
+            font-size: 0.8rem;
+            color: #64748b;
+            text-align: center;
         }
     </style>
 </head>
 <body>
 
-    <h1>🛒 AI Market POS</h1>
-    <p>5학년 영어 9단원: They Are Twenty Thousand Won</p>
+    <header>
+        <h1>📊 AI Market POS - 교사용 성능 평가 대시보드</h1>
+        <p class="sub-title">중간과제 제출용: 모델 검증, 혼동행렬(Confusion Matrix) 및 오답 분석</p>
+    </header>
 
-    <div class="box">
-        <div id="webcam-container">카메라가 꺼져 있습니다</div>
-        <button type="button" onclick="init()">🎥 카메라 켜기 / 다시 인식하기</button>
+    <div class="dashboard-container">
+        <!-- 왼쪽 패널: 데이터 업로드 및 설정 -->
+        <div class="card">
+            <h2>🧪 테스트 세트 평가</h2>
+            <div class="control-group" style="margin-top: 10px;">
+                <label>테스트 이미지 일괄 업로드 (여러 장 선택 가능)</label>
+                <input type="file" id="test-files" accept="image/*" multiple>
+            </div>
+            <button class="eval-btn" onclick="runEvaluation()">모델 성능 평가 실행</button>
 
-        <div class="result-box">
-            <div id="label-name" style="font-size: 1.1rem; color: #94a3b8;">가격표를 비춰주세요</div>
-            <div id="price-en" class="price-en">Show me the price tag!</div>
+            <div style="margin-top: 20px;">
+                <label>모델 로드 상태</label>
+                <div id="model-status" style="font-size: 0.9rem; color: #16a348; font-weight: bold; margin-top: 5px;">
+                    모델 로딩 중...
+                </div>
+            </div>
+
+            <div style="margin-top: 20px;">
+                <label>클래스 구성 (5개 가격대)</label>
+                <div id="class-labels" style="font-size: 0.85rem; color: #64748b; line-height: 1.5;">
+                    - class_10000<br>- class_20000<br>- class_30000<br>- class_40000<br>- class_50000
+                </div>
+            </div>
         </div>
 
-        <div id="label-container" style="margin-top: 15px; text-align: left; font-size: 0.9rem;"></div>
+        <!-- 오른쪽 패널: 평가 결과 및 혼동행렬 -->
+        <div class="card">
+            <h2>📈 평가 결과 요약</h2>
+            <div class="metrics-grid">
+                <div class="metric-card">
+                    <div>총 테스트 이미지</div>
+                    <div id="metric-total" class="metric-value">0 장</div>
+                </div>
+                <div class="metric-card">
+                    <div>정분류율 (Accuracy)</div>
+                    <div id="metric-accuracy" class="metric-value">0.0%</div>
+                </div>
+            </div>
+
+            <h2>🧮 혼동행렬 (Confusion Matrix)</h2>
+            <div style="overflow-x: auto;">
+                <table class="matrix-table" id="confusion-matrix-table">
+                    <tr>
+                        <th colspan="2" rowspan="2">실제 \ 예측</th>
+                        <th colspan="5">AI 예측 클래스</th>
+                    </tr>
+                    <tr id="matrix-header-row">
+                        <th>10k</th>
+                        <th>20k</th>
+                        <th>30k</th>
+                        <th>40k</th>
+                        <th>50k</th>
+                    </tr>
+                    <!-- 동적 생성 -->
+                </table>
+            </div>
+
+            <h2 style="margin-top: 20px;">⚠️ 오답 분석 로그</h2>
+            <div id="error-log-container">
+                <div style="color: #94a3b8; text-align: center; padding: 20px;">
+                    테스트 이미지를 업로드하고 평가를 실행해 주세요.
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="privacy-notice">
+        🔒 브라우저 내부에서만 연산이 수행되며 사진 파일은 외부로 전송되지 않습니다.
     </div>
 
     <script type="text/javascript">
-        // 모델이 있는 폴더 경로 (index.html과 같은 위치)
-        const URL_PATH = "./";
+        const MODEL_URL = "./";
+        let model, classLabels = [];
 
-        let model, webcam, labelContainer, maxPredictions;
-        let isRunning = false;
-
-        // 가격 매핑 (10,000 won 형식)
-        const priceMap = {
-            "class_10000": "They are 10,000 won.",
-            "class_20000": "They are 20,000 won.",
-            "class_30000": "They are 30,000 won.",
-            "class_40000": "They are 40,000 won.",
-            "class_50000": "They are 50,000 won."
+        window.onload = async function() {
+            await loadModel();
         };
 
-        // 페이지 로드 시 모델 불러오기
         async function loadModel() {
             try {
-                const modelURL = URL_PATH + "model.json";
-                const metadataURL = URL_PATH + "metadata.json";
-
-                model = await tmImage.load(modelURL, metadataURL);
-                maxPredictions = model.getTotalClasses();
-
-                labelContainer = document.getElementById("label-container");
-                labelContainer.innerHTML = "";
-                for (let i = 0; i < maxPredictions; i++) {
-                    labelContainer.appendChild(document.createElement("div"));
-                }
-            } catch (e) {
-                console.error(e);
-                document.getElementById("label-name").innerText = "모델 파일을 읽지 못했습니다.";
-            }
-        }
-
-        // 카메라 시작 및 재시작 함수
-        async function init() {
-            if (!model) {
-                await loadModel();
-                if (!model) return;
-            }
-
-            // 이미 실행 중이면 멈춤
-            if (isRunning) {
-                try {
-                    await webcam.stop();
-                } catch(e) {}
-                isRunning = false;
-            }
-
-            const webcamContainer = document.getElementById("webcam-container");
-            webcamContainer.innerHTML = "";
-
-            try {
-                // 웹캠 설정 (가로세로 280px, 거울모드 true)
-                const flip = true;
-                webcam = new tmImage.Webcam(280, 280, flip);
-                await webcam.setup(); // 카메라 권한 요청
-                await webcam.play();
+                model = await tmImage.load(MODEL_URL + "model.json", MODEL_URL + "metadata.json");
+                classLabels = model.getClassLabels();
                 
-                webcamContainer.appendChild(webcam.canvas);
+                document.getElementById("model-status").innerText = "✔ 모델 로드 완료 (정상)";
                 
-                const videoEl = webcam.canvas;
-                if(videoEl) videoEl.setAttribute("playsinline", true);
+                // 클래스 라벨 반영
+                let labelHtml = "";
+                classLabels.forEach(lbl => {
+                    if(lbl !== "background") labelHtml += `- ${lbl}<br>`;
+                });
+                document.getElementById("class-labels").innerHTML = labelHtml;
 
-                isRunning = true;
-                window.requestAnimationFrame(loop);
-
+                buildMatrixTable();
             } catch (err) {
-                alert("카메라를 켤 수 없습니다. 브라우저 권한을 확인해주세요.");
                 console.error(err);
-                isRunning = false;
+                document.getElementById("model-status").style.color = "#dc2626";
+                document.getElementById("model-status").innerText = "❌ 모델 로드 실패 (파일 경로 확인 요망)";
             }
         }
 
-        async function loop() {
-            if (!isRunning) return;
-            webcam.update();
-            await predict();
-            window.requestAnimationFrame(loop);
+        // 혼동행렬 테이블 뼈대 생성
+        function buildMatrixTable() {
+            const table = document.getElementById("confusion-matrix-table");
+            // 기존 동적 행 제거 후 재생성
+            let headerRowHTML = `<tr><th colspan="2" rowspan="2">실제 \\ 예측</th><th colspan="${classLabels.length}">AI 예측</th></tr><tr>`;
+            classLabels.forEach(lbl => {
+                headerRowHTML += `<th>${lbl.replace('class_', '')}</th>`;
+            });
+            headerRowHTML += `</tr>`;
+
+            classLabels.forEach(actual => {
+                headerRowHTML += `<tr>`;
+                headerRowHTML += `<th>실제 ${actual.replace('class_', '')}</th>`;
+                classLabels.forEach(pred => {
+                    headerRowHTML += `<td id="cell-${actual}-${pred}">0</td>`;
+                });
+                headerRowHTML += `</tr>`;
+            });
+            table.innerHTML = headerRowHTML;
         }
 
-        async function predict() {
-            if (!model || !webcam) return;
+        // 테스트 이미지 일괄 평가 실행
+        async function runEvaluation() {
+            const fileInput = document.getElementById("test-files");
+            const files = fileInput.files;
 
-            const prediction = await model.predict(webcam.canvas);
-            
-            let highestProb = 0;
-            let bestClass = "";
+            if (files.length === 0) {
+                alert("평가할 테스트 이미지 파일을 최소 1장 이상 선택해 주세요!");
+                return;
+            }
 
-            for (let i = 0; i < maxPredictions; i++) {
-                const className = prediction[i].className;
-                const probability = prediction[i].probability;
+            if (!model) {
+                alert("모델이 아직 로드되지 않았습니다.");
+                return;
+            }
+
+            // 혼동행렬 데이터 초기화 (행: 실제, 열: 예측)
+            let matrix = {};
+            classLabels.forEach(a => {
+                matrix[a] = {};
+                classLabels.forEach(p => {
+                    matrix[a][p] = 0;
+                });
+            });
+
+            let totalCount = files.length;
+            let correctCount = 0;
+            let errorLogs = "";
+
+            // 이미지 순회 추론
+            for (let i = 0; i < files.length; i++) {
+                const file = files[i];
                 
-                // 확률 바텍스트 표시
-                const classPrediction = `${className}: ${(probability * 100).toFixed(0)}%`;
-                if (labelContainer.childNodes[i]) {
-                    labelContainer.childNodes[i].innerHTML = classPrediction;
+                // 파일 이름에서 실제 정답 추론 (파일명에 '10000', '20000' 등이 포함되어 있다고 가정, 없으면 첫 번째 클래스로 임시 지정)
+                let actualClass = classLabels[0];
+                for (let lbl of classLabels) {
+                    let num = lbl.replace('class_', '');
+                    if (file.name.includes(num)) {
+                        actualClass = lbl;
+                        break;
+                    }
                 }
 
-                if (probability > highestProb) {
-                    highestProb = probability;
-                    bestClass = className;
+                const imgElement = await loadImage(file);
+                const prediction = await model.predict(imgElement);
+
+                let maxProb = 0;
+                let predictedClass = classLabels[0];
+
+                prediction.forEach(p => {
+                    if (p.probability > maxProb) {
+                        maxProb = p.probability;
+                        predictedClass = p.className;
+                    }
+                });
+
+                // 혼동행렬 카운트 증가
+                if(matrix[actualClass] && matrix[actualClass][predictedClass] !== undefined) {
+                    matrix[actualClass][predictedClass]++;
+                }
+
+                if (actualClass === predictedClass) {
+                    correctCount++;
+                } else {
+                    errorLogs += `<div class="error-item"><b>[오답]</b> 파일명: ${file.name} | 실제: <b>${actualClass}</b> ➡️ 예측: <span style="color:red;"><b>${predictedClass}</b></span> (${(maxProb*100).toFixed(0)}%)</div>`;
                 }
             }
 
-            // 70폭 이상이고 background가 아닐 때 결과 출력 및 TTS
-            if (highestProb >= 0.70 && bestClass !== "background") {
-                const englishText = priceMap[bestClass] || bestClass;
-                document.getElementById("label-name").innerText = bestClass;
-                document.getElementById("price-en").innerText = englishText;
-            } else {
-                document.getElementById("label-name").innerText = "인식 중...";
-                document.getElementById("price-en").innerText = "Show me the price tag!";
-            }
+            // 결과 화면 반영
+            document.getElementById("metric-total").innerText = `${totalCount} 장`;
+            let accuracy = ((correctCount / totalCount) * 100).toFixed(1);
+            document.getElementById("metric-accuracy").innerText = `${accuracy}%`;
+
+            // 혼동행렬 표 셀 업데이트
+            classLabels.forEach(actual => {
+                classLabels.forEach(pred => {
+                    const cell = document.getElementById(`cell-${actual}-${pred}`);
+                    if (cell) {
+                        let val = matrix[actual][pred];
+                        cell.innerText = val;
+                        if (actual === pred) {
+                            cell.className = val > 0 ? "correct" : "";
+                        } else {
+                            cell.className = val > 0 ? "incorrect" : "";
+                        }
+                    }
+                });
+            });
+
+            // 오답 로그 출력
+            const logContainer = document.getElementById("error-log-container");
+            logContainer.innerHTML = errorLogs || `<div style="color: #16a348; text-align: center; padding: 20px;">🎉 오답이 없습니다! 완벽한 정분류율입니다.</div>`;
+        }
+
+        // 이미지 로드 유틸리티 함수
+        function loadImage(file) {
+            return new Promise((resolve) => {
+                const img = new Image();
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    img.src = e.target.result;
+                    img.onload = function() {
+                        resolve(img);
+                    }
+                };
+                reader.readAsDataURL(file);
+            });
         }
     </script>
 </body>
