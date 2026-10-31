@@ -99,6 +99,17 @@
             background-color: #1d4ed8;
         }
 
+        button.csv-btn {
+            background-color: #10b981;
+        }
+        button.csv-btn:hover {
+            background-color: #059669;
+        }
+        button.csv-btn:disabled {
+            background-color: #cbd5e1;
+            cursor: not-allowed;
+        }
+
         button.reset-btn {
             padding: 10px 15px;
             background-color: #e2e8f0;
@@ -182,12 +193,12 @@
             color: #991b1b;
         }
 
-        /* [수정됨] 4번 영역: 틀린 사진 갤러리 (6개씩 자동 줄바꿈 및 세로 스크롤 부여) */
+        /* 4번 영역: 틀린 사진 갤러리 (6개씩 줄바꿈 적용) */
         #wrong-images-container {
             display: flex;
-            flex-wrap: wrap; /* 6개가 차면 다음 줄로 자동 개행 */
+            flex-wrap: wrap;
             gap: 10px;
-            max-height: 260px; /* 너무 길어지면 세로 스크롤바 생성 */
+            max-height: 260px;
             overflow-y: auto;
             padding: 5px;
             align-content: flex-start;
@@ -198,7 +209,7 @@
             border: 1px solid #e2e8f0;
             border-radius: 8px;
             padding: 6px;
-            width: calc(16.666% - 9px); /* 한 줄에 정확히 6개씩 배치되도록 너비 계산 */
+            width: calc(16.666% - 9px);
             min-width: 90px;
             text-align: center;
             box-shadow: 0 2px 4px rgba(0,0,0,0.02);
@@ -232,7 +243,7 @@
 
     <header>
         <h1>📊 AI Market POS - 교사용 성능 평가 대시보드</h1>
-        <p class="sub-title">중간과제 제출용: 모델 검증, 혼동행렬, 클래스별 정분류율 및 오답 이미지 시각화</p>
+        <p class="sub-title">중간과제 제출용: 모델 검증, 혼동행렬, 클래스별 정분류율 및 오답 분석 로그(CSV 추출)</p>
     </header>
 
     <div class="dashboard-grid">
@@ -241,13 +252,18 @@
         <div class="card">
             <h2>1. 테스트 사진 넣기</h2>
             <div class="control-group">
-                <label>테스트 이미지 일괄 업로드 (여러 장 선택)</label>
+                <label>테스트 이미지 일괄 업로드 (클래스별 10개씩, 총 60개 권장)</label>
                 <input type="file" id="test-files" accept="image/*" multiple>
             </div>
             
             <div class="btn-group">
                 <button class="action-btn" onclick="runEvaluation()">모델 성능 평가 실행</button>
                 <button class="reset-btn" onclick="resetDashboard()">초기화</button>
+            </div>
+
+            <!-- CSV 다운로드 버튼 추가 -->
+            <div style="margin-top: 8px;">
+                <button id="csv-btn" class="action-btn csv-btn" onclick="downloadCSV()" disabled>📥 평가 결과 CSV 다운로드</button>
             </div>
 
             <div style="margin-top: 15px; font-size: 0.85rem; color: #475569;">
@@ -282,9 +298,9 @@
             </div>
         </div>
 
-        <!-- [4번 영역] 틀린 사진 모아 보기 -->
+        <!-- [4번 영역] 오답 분석 로그 (틀린 사진 모아 보기) -->
         <div class="card">
-            <h2>4. 틀린 사진 모아 보기 (<span id="wrong-count-title">0장</span>)</h2>
+            <h2>4. 오답 분석 로그 (<span id="wrong-count-title">0장</span>)</h2>
             <div id="wrong-images-container">
                 <div style="color: #94a3b8; text-align: center; width: 100%; font-size: 0.85rem;">
                     오인식된 테스트 이미지가 존재하지 않습니다.
@@ -301,6 +317,7 @@
     <script type="text/javascript">
         const MODEL_URL = "./";
         let model, classLabels = [];
+        let evaluationLogs = []; // CSV 내보내기를 위한 로그 배열
 
         window.onload = async function() {
             await loadModel();
@@ -357,6 +374,7 @@
             }
 
             document.getElementById("file-count-status").innerText = `선택된 사진 ${files.length}장 평가 중...`;
+            evaluationLogs = []; // 로그 초기화
 
             let matrix = {};
             let classTotal = {};
@@ -412,7 +430,8 @@
 
                 matrix[actualClass][predictedClass]++;
 
-                if (actualClass === predictedClass) {
+                const isCorrect = (actualClass === predictedClass);
+                if (isCorrect) {
                     correctCount++;
                     classCorrect[actualClass]++;
                 } else {
@@ -427,11 +446,23 @@
                         </div>
                     `;
                 }
+
+                // CSV 로그 수집 (파일명, 실제값, 예측값, 일치여부, 확률)
+                evaluationLogs.push({
+                    filename: file.name,
+                    actual: actualClass.replace('class_', ''),
+                    predicted: predictedClass.replace('class_', ''),
+                    result: isCorrect ? '정답' : '오답',
+                    confidence: (maxProb * 100).toFixed(1) + '%'
+                });
             }
 
             document.getElementById("file-count-status").innerText = `선택된 사진 ${totalCount}장 · 판정 완료`;
             let accuracy = totalCount > 0 ? ((correctCount / totalCount) * 100).toFixed(1) : "0.0";
             document.getElementById("total-accuracy-val").innerHTML = `${accuracy}% <span style="font-size: 1rem; color: #64748b; font-weight: normal;">(${correctCount}/${totalCount})</span>`;
+
+            // CSV 버튼 활성화
+            document.getElementById("csv-btn").disabled = false;
 
             let classAccHTML = "";
             classLabels.forEach(lbl => {
@@ -476,6 +507,30 @@
             wrongContainer.innerHTML = wrongCardsHTML || `<div style="color: #16a348; text-align: center; width: 100%; font-size: 0.85rem;">🎉 오답 이미지가 없습니다! 완벽한 분류 성능입니다.</div>`;
         }
 
+        // CSV 다운로드 함수 구현
+        function downloadCSV() {
+            if (evaluationLogs.length === 0) {
+                alert("다운로드할 평가 결과가 없습니다.");
+                return;
+            }
+
+            let csvContent = "\uFEFF"; // UTF-8 BOM (엑셀 한글 깨짐 방지)
+            csvContent += "파일명,실제값(Actual),예측값(Predicted),판정결과,확률(Confidence)\n";
+
+            evaluationLogs.forEach(row => {
+                csvContent += `"${row.filename}","${row.actual}","${row.predicted}","${row.result}","${row.confidence}"\n`;
+            });
+
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `AI_Market_POS_Evaluation_Log_${new Date().toISOString().slice(0,10)}.csv`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+        }
+
         function resetDashboard() {
             document.getElementById("test-files").value = "";
             document.getElementById("file-count-status").innerText = "선택된 사진 0장 · 판정 대기 중";
@@ -484,6 +539,8 @@
             buildMatrixTable();
             document.getElementById("wrong-count-title").innerText = "0장";
             document.getElementById("wrong-images-container").innerHTML = `<div style="color: #94a3b8; text-align: center; width: 100%; font-size: 0.85rem;">오인식된 테스트 이미지가 존재하지 않습니다.</div>`;
+            document.getElementById("csv-btn").disabled = true;
+            evaluationLogs = [];
         }
 
         function readImageFile(file) {
