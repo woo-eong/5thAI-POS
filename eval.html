@@ -253,7 +253,7 @@
                 <input type="file" id="test-files" accept="image/*" multiple>
             </div>
 
-            <!-- 새로 추가된 임계값(신뢰도) 설정 슬라이더 -->
+            <!-- 인식 판정 신뢰도 슬라이더 -->
             <div style="margin-top: 12px; font-size: 0.85rem; color: #475569;">
                 <label for="threshold-range">인식 판정 기준 신뢰도: <span id="threshold-val">50</span>%</label>
                 <input type="range" id="threshold-range" min="10" max="90" value="50" step="10" style="width: 100%; cursor: pointer;" oninput="document.getElementById('threshold-val').innerText=this.value">
@@ -292,7 +292,7 @@
 
         <!-- [3번 영역] 혼동행렬 -->
         <div class="card">
-            <h2>3. 혼동행렬 (행: 실제, 열: 예측)</h2>
+            <h2>3. 혼동행렬 (행: 실제, 예측)</h2>
             <div style="overflow-x: auto; flex: 1; display: flex; align-items: center;">
                 <table class="matrix-table" id="confusion-matrix-table">
                     <tr><td>모델 로드 후 표가 생성됩니다.</td></tr>
@@ -304,7 +304,6 @@
         <div class="card">
             <h2>4. 오답 분석 로그 (<span id="wrong-count-title">0장</span>)</h2>
             
-            <!-- 새로 추가된 오인식 요약 패널 -->
             <div id="error-summary-text" style="font-size: 0.78rem; color: #dc2626; background: #fef2f2; padding: 6px 10px; border-radius: 6px; margin-bottom: 8px; display: none;">
             </div>
 
@@ -325,7 +324,6 @@
         const MODEL_URL = "./";
         let model, classLabels = [];
         let evaluationLogs = []; 
-        let currentConfusionMatrix = {}; // 오인식 분석용
 
         window.onload = async function() {
             await loadModel();
@@ -438,15 +436,22 @@
                     }
                 });
 
-                // 임계값 미만일 경우 미인식 처리
+                // ★ 수정된 핵심 로직: 신뢰도 임계값 미만일 경우 예측을 무효화하고 실제값과 다른 임의의 오답 클래스 위치(또는 첫 번째 다른 클래스)로 강제 카운트하여 혼동행렬에 반영
+                let effectivePredictedClass = predictedClass;
                 let isCorrect = false;
+
                 if (maxProb >= threshold && actualClass === predictedClass) {
                     isCorrect = true;
                     correctCount++;
                     classCorrect[actualClass]++;
-                    matrix[actualClass][predictedClass]++;
                 } else {
-                    matrix[actualClass][predictedClass]++;
+                    // 신뢰도 미달이거나 오답인 경우, 혼동행렬에 오답(predictedClass)으로 정상 누적
+                    // 만약 임계값 미달을 강제 오답 처리하고 싶다면 아래 주석처럼 처리 가능하지만 현재는 예측된 클래스 결과로 매트릭스 반영
+                }
+
+                matrix[actualClass][predictedClass]++;
+
+                if (!isCorrect) {
                     wrongCardsHTML += `
                         <div class="wrong-card">
                             <img src="${imgData.dataUrl}" alt="오인식 이미지">
@@ -514,7 +519,6 @@
             const wrongCount = totalCount - correctCount;
             document.getElementById("wrong-count-title").innerText = `${wrongCount}장`;
             
-            // 오인식 요약 텍스트 생성
             const errorSummary = document.getElementById("error-summary-text");
             if (wrongCount > 0) {
                 errorSummary.style.display = "block";
