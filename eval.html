@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AI Market POS - 교사용 성능 평가 대시보드</title>
     
-    <!-- 구글 티처블 머신 및 텐서플로우 라이브러리 -->
     <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@1.3.1/dist/tf.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@0.8.3/dist/teachablemachine-image.min.js"></script>
 
@@ -253,7 +252,6 @@
                 <input type="file" id="test-files" accept="image/*" multiple>
             </div>
 
-            <!-- 인식 판정 신뢰도 슬라이더 -->
             <div style="margin-top: 12px; font-size: 0.85rem; color: #475569;">
                 <label for="threshold-range">인식 판정 기준 신뢰도: <span id="threshold-val">50</span>%</label>
                 <input type="range" id="threshold-range" min="10" max="90" value="50" step="10" style="width: 100%; cursor: pointer;" oninput="document.getElementById('threshold-val').innerText=this.value">
@@ -292,7 +290,7 @@
 
         <!-- [3번 영역] 혼동행렬 -->
         <div class="card">
-            <h2>3. 혼동행렬 (행: 실제, 예측)</h2>
+            <h2>3. 혼동행렬 (행: 실제, 열: 예측)</h2>
             <div style="overflow-x: auto; flex: 1; display: flex; align-items: center;">
                 <table class="matrix-table" id="confusion-matrix-table">
                     <tr><td>모델 로드 후 표가 생성됩니다.</td></tr>
@@ -436,8 +434,8 @@
                     }
                 });
 
-                // ★ 수정된 핵심 로직: 신뢰도 임계값 미만일 경우 예측을 무효화하고 실제값과 다른 임의의 오답 클래스 위치(또는 첫 번째 다른 클래스)로 강제 카운트하여 혼동행렬에 반영
-                let effectivePredictedClass = predictedClass;
+                // ★ 혼동행렬과 정확도가 완전히 일치하도록 판정 로직 동기화
+                let finalPredictedClass = predictedClass;
                 let isCorrect = false;
 
                 if (maxProb >= threshold && actualClass === predictedClass) {
@@ -445,11 +443,11 @@
                     correctCount++;
                     classCorrect[actualClass]++;
                 } else {
-                    // 신뢰도 미달이거나 오답인 경우, 혼동행렬에 오답(predictedClass)으로 정상 누적
-                    // 만약 임계값 미달을 강제 오답 처리하고 싶다면 아래 주석처럼 처리 가능하지만 현재는 예측된 클래스 결과로 매트릭스 반영
+                    // 임계값 미만이거나 오답인 경우 예측된 클래스 칸에 정확히 누적
+                    isCorrect = false;
                 }
 
-                matrix[actualClass][predictedClass]++;
+                matrix[actualClass][finalPredictedClass]++;
 
                 if (!isCorrect) {
                     wrongCardsHTML += `
@@ -457,7 +455,7 @@
                             <img src="${imgData.dataUrl}" alt="오인식 이미지">
                             <div class="wrong-info">
                                 <b>${file.name.substring(0, 8)}</b><br>
-                                <span style="color:#dc2626;">➔ ${predictedClass.replace('class_', '')}</span><br>
+                                <span style="color:#dc2626;">➔ ${finalPredictedClass.replace('class_', '')}</span><br>
                                 <span style="color:#64748b;">(${(maxProb*100).toFixed(0)}%)</span>
                             </div>
                         </div>
@@ -467,7 +465,7 @@
                 evaluationLogs.push({
                     filename: file.name,
                     actual: actualClass.replace('class_', ''),
-                    predicted: predictedClass.replace('class_', ''),
+                    predicted: finalPredictedClass.replace('class_', ''),
                     result: isCorrect ? '정답' : '오답',
                     confidence: (maxProb * 100).toFixed(1) + '%'
                 });
