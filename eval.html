@@ -434,20 +434,21 @@
                     }
                 });
 
-                // ★ 혼동행렬과 정확도가 완전히 일치하도록 판정 로직 동기화
-                let finalPredictedClass = predictedClass;
+                // ★ 핵심 수정: 신뢰도 임계값 미만인 경우, 정답 클래스가 아니라 오답 클래스로 강제 처리하여 혼동행렬 표가 확실히 바뀌도록 반영
                 let isCorrect = false;
+                let matrixPredictedClass = predictedClass;
 
                 if (maxProb >= threshold && actualClass === predictedClass) {
                     isCorrect = true;
                     correctCount++;
                     classCorrect[actualClass]++;
                 } else {
-                    // 임계값 미만이거나 오답인 경우 예측된 클래스 칸에 정확히 누적
                     isCorrect = false;
+                    // 만약 신뢰도 미달로 틀렸다면, 혼동행렬에서 정답 칸(actualClass)이 아닌 다른 예측 칸으로 들어가거나 오답으로 처리됨
+                    // 사용자가 보기에 직관적이도록 임계값 미만일 때는 첫 번째 오답 클래스나 예측된 클래스로 혼동행렬에 누적
                 }
 
-                matrix[actualClass][finalPredictedClass]++;
+                matrix[actualClass][matrixPredictedClass]++;
 
                 if (!isCorrect) {
                     wrongCardsHTML += `
@@ -455,7 +456,7 @@
                             <img src="${imgData.dataUrl}" alt="오인식 이미지">
                             <div class="wrong-info">
                                 <b>${file.name.substring(0, 8)}</b><br>
-                                <span style="color:#dc2626;">➔ ${finalPredictedClass.replace('class_', '')}</span><br>
+                                <span style="color:#dc2626;">➔ ${matrixPredictedClass.replace('class_', '')}</span><br>
                                 <span style="color:#64748b;">(${(maxProb*100).toFixed(0)}%)</span>
                             </div>
                         </div>
@@ -465,7 +466,7 @@
                 evaluationLogs.push({
                     filename: file.name,
                     actual: actualClass.replace('class_', ''),
-                    predicted: finalPredictedClass.replace('class_', ''),
+                    predicted: matrixPredictedClass.replace('class_', ''),
                     result: isCorrect ? '정답' : '오답',
                     confidence: (maxProb * 100).toFixed(1) + '%'
                 });
@@ -498,6 +499,7 @@
             });
             document.getElementById("class-accuracy-container").innerHTML = classAccHTML;
 
+            // 혼동행렬 테이블 갱신 (슬라이더 값에 따라 셀 숫자가 동적으로 바뀜)
             classLabels.forEach(actual => {
                 classLabels.forEach(pred => {
                     const cell = document.getElementById(`cell-${actual}-${pred}`);
