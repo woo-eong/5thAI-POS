@@ -249,13 +249,14 @@
     </div>
 
     <div class="nav-link">
-        <a href="index.html">📊 [교사용 성능 평가 대시보드 바로가기]</a>
+        <a href="eval.html">📊 [교사용 성능 평가 대시보드 바로가기]</a>
     </div>
 
     <script type="text/javascript">
         const MODEL_URL = "./";
         let model, videoElement, stream, isWebcamRunning = false;
         let lastSpokenText = "";
+        let lastSpokenTime = 0; // 연속 인식 시 시간 간격 체크용 변수
 
         document.addEventListener("DOMContentLoaded", function() {
             initModel();
@@ -291,12 +292,11 @@
                 startBtn.disabled = true;
                 statusDiv.innerText = "📷 카메라 권한 요청 중...";
 
-                // 브라우저 표준 비디오 스트림 연결
                 stream = await navigator.mediaDevices.getUserMedia({ 
                     video: { width: 224, height: 224, facingMode: "user" } 
                 });
 
-                container = document.getElementById("media-preview-container");
+                const container = document.getElementById("media-preview-container");
                 container.innerHTML = "";
 
                 videoElement = document.createElement("video");
@@ -331,7 +331,6 @@
             const file = event.target.files[0];
             if (!file || !model) return;
 
-            // 카메라 정지
             if (isWebcamRunning && stream) {
                 stream.getTracks().forEach(track => track.stop());
                 isWebcamRunning = false;
@@ -384,7 +383,7 @@
             }
         }
 
-        // 5. POS 화면 업데이트 및 영어 발화 연동
+        // 5. POS 화면 업데이트 및 영어 발화 연동 (연속 재생 제한 개선)
         function updatePOSDisplay(className) {
             const cleanName = className.replace('class_', '').trim();
             const priceDisplay = document.getElementById("recognized-price");
@@ -419,16 +418,24 @@
             englishDisplay.innerText = `"${englishSentence}"`;
             productImg.src = imgUrl;
 
-            if (lastSpokenText !== englishSentence && !cleanName.toLowerCase().includes("background")) {
-                lastSpokenText = englishSentence;
-                speakText(englishSentence);
+            // ★ 수정된 핵심 로직: 같은 문장이라도 일정 시간(예: 2.5초)이 지나거나 카드를 다시 대면 소리가 다시 나오도록 개선
+            const currentTime = Date.now();
+            const timeDiff = currentTime - lastSpokenTime;
+
+            if (!cleanName.toLowerCase().includes("background")) {
+                // 문장이 바뀌었거나, 혹은 같은 문장이라도 마지막 재생 후 2.5초가 지났다면 다시 소리 재생
+                if (lastSpokenText !== englishSentence || timeDiff > 2500) {
+                    lastSpokenText = englishSentence;
+                    lastSpokenTime = currentTime;
+                    speakText(englishSentence);
+                }
             }
         }
 
-        // 6. TTS 음성 합성
+        // 6. TTS 음성 합성 (연속 호출 시 기존 음성 캔슬 후 즉시 재생)
         function speakText(text) {
             if ('speechSynthesis' in window) {
-                window.speechSynthesis.cancel();
+                window.speechSynthesis.cancel(); // 밀려 있는 이전 음성 즉시 취소
                 const speech = new SpeechSynthesisUtterance(text);
                 speech.lang = 'en-US';
                 speech.rate = 0.9;
