@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AI Market POS - 5학년 영어 시장놀이 (학생용)</title>
-    
+
     <!-- 구글 티처블 머신 및 텐서플로우 라이브러리 -->
     <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@1.3.1/dist/tf.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@0.8.3/dist/teachablemachine-image.min.js"></script>
@@ -95,10 +95,9 @@
             width: 100%;
             height: 100%;
             object-fit: cover;
-            transform: scaleX(-1); /* 좌우 반전 */
+            transform: scaleX(-1);
         }
 
-        /* 촬영된 사진도 좌우 반전 적용 */
         #media-preview-container img.captured-photo {
             width: 100%;
             height: 100%;
@@ -106,7 +105,6 @@
             transform: scaleX(-1);
         }
 
-        /* 파일 업로드 사진은 원본 그대로 표시 */
         #media-preview-container img.uploaded-photo {
             width: 100%;
             height: 100%;
@@ -219,8 +217,8 @@
         }
 
         #product-img {
-            width: 140px;
-            height: 140px;
+            width: 120px;
+            height: 120px;
             object-fit: cover;
             border-radius: 10px;
             border: 1px solid #cbd5e1;
@@ -229,14 +227,14 @@
         }
 
         .price-tag {
-            font-size: 1.4rem;
+            font-size: 1.35rem;
             font-weight: bold;
             color: #2563eb;
-            margin: 5px 0;
+            margin: 4px 0;
         }
 
         .english-speech {
-            font-size: 1.1rem;
+            font-size: 1.05rem;
             color: #0f172a;
             font-weight: bold;
             background: #e0f2fe;
@@ -246,8 +244,75 @@
             margin-top: 8px;
         }
 
+        .top3-bars {
+            width: 100%;
+            margin-top: 12px;
+            text-align: left;
+        }
+
+        .prob-row {
+            margin-bottom: 6px;
+            font-size: 0.82rem;
+            color: #334155;
+        }
+
+        .prob-label {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 2px;
+        }
+
+        .prob-track {
+            width: 100%;
+            height: 10px;
+            background: #e2e8f0;
+            border-radius: 6px;
+            overflow: hidden;
+        }
+
+        .prob-fill {
+            height: 100%;
+            background: #2563eb;
+            width: 0%;
+        }
+
+        .reflection-question {
+            width: 100%;
+            margin-top: 10px;
+            padding: 8px 10px;
+            background: #fef9c3;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            font-weight: bold;
+            color: #713f12;
+        }
+
+        .tips-box {
+            width: 100%;
+            margin-top: 10px;
+            padding: 10px 12px;
+            background: #fff7ed;
+            border: 1px solid #fed7aa;
+            border-radius: 8px;
+            text-align: left;
+            font-size: 0.84rem;
+            color: #9a3412;
+        }
+
+        .tips-box ul {
+            margin: 6px 0 0 18px;
+            padding: 0;
+        }
+
+        .always-notice {
+            margin-top: 14px;
+            font-size: 0.85rem;
+            color: #475569;
+            font-weight: bold;
+        }
+
         .nav-link {
-            margin-top: 25px;
+            margin-top: 14px;
             font-size: 0.9rem;
         }
 
@@ -266,28 +331,26 @@
 <body>
 
     <header>
-        <h1>🛍️ AI Market POS - 스마트 시장놀이</h1>
-        <p class="sub-title">5학년 영어 9단원: 웹캠 스캔, 사진 찍기 또는 손글씨 사진을 올려주세요!</p>
+        <h1 id="app-title">🛍️ AI Market POS - 스마트 시장놀이</h1>
+        <p class="sub-title" id="scope-subtitle">손글씨 가격 카드(10000~50000)를 구분해요 · 5학년 영어 9단원</p>
     </header>
 
     <div class="main-container">
-        
+
         <!-- 왼쪽: 스캔/업로드 입력 영역 -->
         <div class="card">
             <h2>📷 입력 방식 선택 (카메라 / 사진)</h2>
-            
+
             <div id="media-preview-container">입력 대기 중</div>
-            
-            <!-- 카메라 스캔, 사진 찍기, 재촬영 버튼 -->
+
             <div class="btn-row">
                 <button id="start-btn" class="primary-btn" onclick="startWebcam()" disabled>📷 카메라 켜기</button>
                 <button id="capture-btn" class="capture-btn" onclick="capturePhoto()" disabled>📸 사진 찍기</button>
                 <button id="retake-btn" class="retake-btn" onclick="retakePhoto()">🔄 재촬영</button>
             </div>
-            
-            <!-- 파일 업로드 영역 -->
+
             <div class="file-upload-box">
-                <label for="image-upload">🖼️ 손글씨 사진 파일로 올리기</label>
+                <label for="image-upload">🖼️ 사진 고르기 (카메라가 안 될 때 사용)</label>
                 <input type="file" id="image-upload" accept="image/*" onchange="handleImageUpload(event)">
             </div>
 
@@ -296,34 +359,101 @@
             </div>
         </div>
 
-        <!-- 오른쪽: AI 인식 결과 및 영어 발화 영역 -->
+        <!-- 오른쪽: AI 인식 결과 및 5학년 확률·질문 영역 -->
         <div class="card">
             <h2>🏷️ POS 결제 화면</h2>
             <div class="result-box">
-                <img id="product-img" src="https://via.placeholder.com/140?text=Scan+Price" alt="상품 이미지">
-                <div style="font-size: 0.85rem; color: #64748b;">인식된 가격</div>
+                <img id="product-img" src="https://via.placeholder.com/120?text=Scan+Price" alt="상품 이미지">
+                <div style="font-size: 0.85rem; color: #64748b;">판정 결과</div>
                 <div id="recognized-price" class="price-tag">스캔 대기 중...</div>
                 <div id="english-text" class="english-speech">"They're..."</div>
+
+                <!-- 상위 3개 클래스 확률 막대 및 백분율(5~6학년용) -->
+                <div id="top3-container" class="top3-bars"></div>
+
+                <!-- '잘 모르겠어요' 시 다시 찍는 방법 3가지 -->
+                <div id="unsure-tips" class="tips-box" style="display: none;"></div>
+
+                <!-- 5학년용 단서 찾기 질문 -->
+                <div id="question-box" class="reflection-question"></div>
             </div>
             <button class="primary-btn" style="background-color: #10b981; margin-top: 12px;" onclick="speakResult()">🔊 영어로 다시 듣기</button>
         </div>
 
     </div>
 
+    <div id="always-notice" class="always-notice"></div>
+
     <div class="nav-link">
         <a href="eval.html">📊 [교사용 성능 평가 대시보드 바로가기]</a>
     </div>
 
     <script type="text/javascript">
+        // 기준값·학년군·문구를 한 곳에 모은 설정 객체
+        const CONFIG = {
+            title: "🛍️ AI Market POS - 스마트 시장놀이",
+            scopeText: "손글씨 가격 카드(10000~50000)를 구분해요 · 5학년 영어 9단원",
+            grade: "high", // "low" 1~2학년, "mid" 3~4학년, "high" 5~6학년
+            threshold: 0.65, // 기준값 실험기에서 정한 값으로 수정해 사용
+            classes: {
+                "10000": {
+                    label: "10000 같음",
+                    speech: "They're ten thousand won.",
+                    img: "https://images.unsplash.com/photo-1526170375885-4d8ecf77b99f?w=150"
+                },
+                "20000": {
+                    label: "20000 같음",
+                    speech: "They're twenty thousand won.",
+                    img: "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=150"
+                },
+                "30000": {
+                    label: "30000 같음",
+                    speech: "They're thirty thousand won.",
+                    img: "https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=150"
+                },
+                "40000": {
+                    label: "40000 같음",
+                    speech: "They're forty thousand won.",
+                    img: "https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=150"
+                },
+                "50000": {
+                    label: "50000 같음",
+                    speech: "They're fifty thousand won.",
+                    img: "https://images.unsplash.com/photo-1560343090-f0409e92791a?w=150"
+                }
+            },
+            unsure: {
+                text: "잘 모르겠어요",
+                tips: [
+                    "가격 카드를 화면 가운데에 크게 놓아요",
+                    "빛 반사나 그림자가 없는 밝은 곳에서 찍어요",
+                    "한 번에 카드 한 장만 보여 줘요"
+                ]
+            },
+            question: "AI는 사진의 무엇을 보고 이렇게 생각했을까요? 단서를 찾아 말해 봐요.",
+            notice: "AI는 틀릴 수 있어요. 헷갈리면 선생님께 물어봐요."
+        };
+
         const MODEL_URL = "./";
         let model, videoElement, stream, isWebcamRunning = false;
         let lastSpokenText = "";
         let lastSpokenTime = 0;
 
         document.addEventListener("DOMContentLoaded", function() {
+            applyStaticTexts();
             initModel();
         });
 
+        // 화면 고정 문구 및 5학년 질문 적용
+        function applyStaticTexts() {
+            document.getElementById("app-title").innerText = CONFIG.title;
+            document.getElementById("scope-subtitle").innerText = CONFIG.scopeText;
+            document.getElementById("always-notice").innerText = CONFIG.notice;
+            document.getElementById("question-box").innerText =
+                CONFIG.grade === "high" ? CONFIG.question : "";
+        }
+
+        // 1. 모델 로드 함수
         async function initModel() {
             const statusDiv = document.getElementById("model-status");
             const startBtn = document.getElementById("start-btn");
@@ -331,9 +461,9 @@
             try {
                 statusDiv.innerText = "⏳ AI 모델 파일 로딩 중...";
                 model = await tmImage.load(MODEL_URL + "model.json", MODEL_URL + "metadata.json");
-                
+
                 statusDiv.style.color = "#16a348";
-                statusDiv.innerText = "✔ 모델 준비 완료! 카메라 켜기, 사진 찍기 또는 사진 업로드를 선택하세요.";
+                statusDiv.innerText = "✔ 모델 준비 완료! 카메라 켜기, 사진 찍기 또는 사진 고르기를 선택하세요.";
                 startBtn.disabled = false;
             } catch (err) {
                 console.error(err);
@@ -342,6 +472,7 @@
             }
         }
 
+        // 2. 뒤 카메라 우선 연결 후 실패 시 앞 카메라로 대체
         async function startWebcam() {
             if (isWebcamRunning) return;
 
@@ -354,9 +485,15 @@
                 startBtn.disabled = true;
                 statusDiv.innerText = "📷 카메라 권한 요청 중...";
 
-                stream = await navigator.mediaDevices.getUserMedia({ 
-                    video: { width: 224, height: 224, facingMode: "user" } 
-                });
+                try {
+                    stream = await navigator.mediaDevices.getUserMedia({
+                        video: { width: 224, height: 224, facingMode: { ideal: "environment" } }
+                    });
+                } catch (envErr) {
+                    stream = await navigator.mediaDevices.getUserMedia({
+                        video: { width: 224, height: 224, facingMode: "user" }
+                    });
+                }
 
                 const container = document.getElementById("media-preview-container");
                 container.innerHTML = "";
@@ -364,14 +501,14 @@
                 videoElement = document.createElement("video");
                 videoElement.srcObject = stream;
                 videoElement.autoplay = true;
-                videoElement.playsInline = true;
+                videoElement.playsInline = true; // 모바일/태블릿 인라인 재생 속성
                 container.appendChild(videoElement);
 
                 isWebcamRunning = true;
                 statusDiv.style.color = "#16a348";
-                statusDiv.innerText = "✔ 실시간 카메라 작동 중... '사진 찍기'를 눌러보세요!";
+                statusDiv.innerText = "✔ 카메라 작동 중... '사진 찍기'를 눌러보세요!";
                 startBtn.innerText = "📷 카메라 작동 중";
-                
+
                 captureBtn.style.display = "block";
                 captureBtn.disabled = false;
                 retakeBtn.style.display = "none";
@@ -379,9 +516,8 @@
                 window.requestAnimationFrame(loop);
             } catch (err) {
                 console.error(err);
-                alert("카메라 권한을 얻을 수 없습니다. 브라우저 주소창 왼쪽 자물쇠 아이콘에서 카메라 권한을 '허용'해 주세요.");
                 statusDiv.style.color = "#dc2626";
-                statusDiv.innerText = "❌ 카메라 실행 실패 (권한 차단됨)";
+                statusDiv.innerText = "❌ 카메라를 열 수 없어요. 아래 '사진 고르기'를 이용해 주세요.";
                 startBtn.disabled = false;
             }
         }
@@ -392,7 +528,7 @@
             window.requestAnimationFrame(loop);
         }
 
-        // 사진 찍기 시 좌우반전 적용
+        // 2-1. 카메라 화면 사진 찍기(좌우반전 반영) 및 판정
         async function capturePhoto() {
             if (!videoElement || !model) return;
 
@@ -401,7 +537,6 @@
             canvas.height = 224;
             const ctx = canvas.getContext("2d");
 
-            // 좌우반전 적용하여 캡처
             ctx.save();
             ctx.translate(canvas.width, 0);
             ctx.scale(-1, 1);
@@ -415,7 +550,7 @@
 
             const dataUrl = canvas.toDataURL("image/png");
             const imgElement = document.createElement("img");
-            imgElement.className = "captured-photo"; // 촬영 사진 좌우반전 클래스 적용
+            imgElement.className = "captured-photo";
             imgElement.src = dataUrl;
             imgElement.onload = async function() {
                 const container = document.getElementById("media-preview-container");
@@ -428,7 +563,7 @@
 
                 const statusDiv = document.getElementById("model-status");
                 statusDiv.style.color = "#16a348";
-                statusDiv.innerText = "📸 사진 촬영 완료! 잘 안 나왔다면 '재촬영'을 눌러주세요.";
+                statusDiv.innerText = "📸 사진 촬영 완료! 다시 찍으려면 '재촬영'을 눌러주세요.";
 
                 document.getElementById("start-btn").disabled = true;
                 document.getElementById("start-btn").innerText = "📷 촬영 완료";
@@ -437,6 +572,7 @@
             };
         }
 
+        // 2-2. 재촬영
         async function retakePhoto() {
             window.speechSynthesis.cancel();
             lastSpokenText = "";
@@ -444,12 +580,15 @@
 
             document.getElementById("recognized-price").innerText = "스캔 대기 중...";
             document.getElementById("english-text").innerText = '"They\'re..."';
-            document.getElementById("product-img").src = "https://via.placeholder.com/140?text=Scan+Price";
+            document.getElementById("product-img").src = "https://via.placeholder.com/120?text=Scan+Price";
+            document.getElementById("top3-container").innerHTML = "";
+            document.getElementById("unsure-tips").style.display = "none";
             document.getElementById("image-upload").value = "";
 
             await startWebcam();
         }
 
+        // 3. 업로드한 사진 파일 처리
         async function handleImageUpload(event) {
             const file = event.target.files[0];
             if (!file || !model) return;
@@ -466,7 +605,7 @@
             document.getElementById("retake-btn").style.display = "none";
 
             const statusDiv = document.getElementById("model-status");
-            statusDiv.innerText = "🔍 업로드된 사진 분석 중...";
+            statusDiv.innerText = "🔍 선택한 사진 분석 중...";
 
             const reader = new FileReader();
             reader.onload = async function(e) {
@@ -482,87 +621,117 @@
                     lastSpokenTime = 0;
                     await predictMedia(imgElement);
                     statusDiv.style.color = "#16a348";
-                    statusDiv.innerText = "✔ 업로드된 사진 판정 완료!";
+                    statusDiv.innerText = "✔ 선택한 사진 판정 완료!";
                 };
             };
             reader.readAsDataURL(file);
         }
 
+        // 4. AI 예측 및 기준값(CONFIG.threshold) 비교
         async function predictMedia(imageSource) {
             if (!model) return;
 
             try {
                 const prediction = await model.predict(imageSource);
-                
-                let highestProb = 0;
-                let bestClass = "";
+                const sorted = [...prediction].sort((a, b) => b.probability - a.probability);
+                const top1 = sorted[0];
+                const top3 = sorted.slice(0, 3);
 
-                prediction.forEach(p => {
-                    if (p.probability > highestProb) {
-                        highestProb = p.probability;
-                        bestClass = p.className;
-                    }
-                });
+                renderTop3Bars(top3);
 
-                if (highestProb > 0.4) {
-                    updatePOSDisplay(bestClass);
+                // 가장 높은 확률을 기준값과 비교
+                if (top1.probability < CONFIG.threshold) {
+                    showUnsureScreen(top1.probability);
+                } else {
+                    updatePOSDisplay(top1.className, top1.probability);
                 }
             } catch (err) {
                 console.error("예측 오류:", err);
             }
         }
 
-        function updatePOSDisplay(className) {
-            const cleanName = className.replace('class_', '').trim();
+        // 상위 3개 클래스 막대 및 5학년용 백분율 표시
+        function renderTop3Bars(top3) {
+            const container = document.getElementById("top3-container");
+            container.innerHTML = top3.map(item => {
+                const name = item.className.replace("class_", "").trim();
+                const pct = Math.round(item.probability * 100);
+                const pctText = CONFIG.grade === "high" ? `${pct}%` : "";
+                return `
+                    <div class="prob-row">
+                        <div class="prob-label">
+                            <span>${name}</span>
+                            <span>${pctText}</span>
+                        </div>
+                        <div class="prob-track">
+                            <div class="prob-fill" style="width: ${pct}%;"></div>
+                        </div>
+                    </div>
+                `;
+            }).join("");
+        }
+
+        // 기준값 미만일 때 '잘 모르겠어요'와 다시 찍는 방법 3가지 표시
+        function showUnsureScreen(prob) {
+            const pct = Math.round(prob * 100);
+            const priceDisplay = document.getElementById("recognized-price");
+            const englishDisplay = document.getElementById("english-text");
+            const tipsBox = document.getElementById("unsure-tips");
+
+            priceDisplay.innerText = CONFIG.grade === "high"
+                ? `${CONFIG.unsure.text} (${pct}%)`
+                : CONFIG.unsure.text;
+            englishDisplay.innerText = '"Please show the price card again."';
+
+            tipsBox.style.display = "block";
+            tipsBox.innerHTML = `
+                <div><b>다시 찍는 방법 3가지</b></div>
+                <ul>${CONFIG.unsure.tips.map(t => `<li>${t}</li>`).join("")}</ul>
+            `;
+        }
+
+        // 5. 기준값 이상일 때 '~ 같음' 문구, 확률(%), 영어 문장 표시 및 발화
+        function updatePOSDisplay(className, prob) {
+            const cleanName = className.replace("class_", "").trim();
+            const pct = Math.round(prob * 100);
             const priceDisplay = document.getElementById("recognized-price");
             const englishDisplay = document.getElementById("english-text");
             const productImg = document.getElementById("product-img");
+            const tipsBox = document.getElementById("unsure-tips");
 
-            priceDisplay.innerText = cleanName;
+            tipsBox.style.display = "none";
 
-            let englishSentence = "";
-            let imgUrl = "";
+            let matchedKey = Object.keys(CONFIG.classes).find(k => cleanName.includes(k));
+            let info = matchedKey ? CONFIG.classes[matchedKey] : {
+                label: `${cleanName} 같음`,
+                speech: "Please show the price card.",
+                img: "https://via.placeholder.com/120?text=Ready"
+            };
 
-            if (cleanName.includes("10000") || cleanName.includes("10,000") || cleanName.includes("1만")) {
-                englishSentence = "They're ten thousand won.";
-                imgUrl = "https://images.unsplash.com/photo-1526170375885-4d8ecf77b99f?w=150";
-            } else if (cleanName.includes("20000") || cleanName.includes("20,000") || cleanName.includes("2만")) {
-                englishSentence = "They're twenty thousand won.";
-                imgUrl = "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=150";
-            } else if (cleanName.includes("30000") || cleanName.includes("30,000") || cleanName.includes("3만")) {
-                englishSentence = "They're thirty thousand won.";
-                imgUrl = "https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=150";
-            } else if (cleanName.includes("40000") || cleanName.includes("40,000") || cleanName.includes("4만")) {
-                englishSentence = "They're forty thousand won.";
-                imgUrl = "https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=150";
-            } else if (cleanName.includes("50000") || cleanName.includes("50,000") || cleanName.includes("5만")) {
-                englishSentence = "They're fifty thousand won.";
-                imgUrl = "https://images.unsplash.com/photo-1560343090-f0409e92791a?w=150";
-            } else {
-                englishSentence = "Please show the price card.";
-                imgUrl = "https://via.placeholder.com/140?text=Ready";
-            }
-
-            englishDisplay.innerText = `"${englishSentence}"`;
-            productImg.src = imgUrl;
+            priceDisplay.innerText = CONFIG.grade === "high"
+                ? `${info.label} (${pct}%)`
+                : info.label;
+            englishDisplay.innerText = `"${info.speech}"`;
+            productImg.src = info.img;
 
             const currentTime = Date.now();
             const timeDiff = currentTime - lastSpokenTime;
 
             if (!cleanName.toLowerCase().includes("background")) {
-                if (lastSpokenText !== englishSentence || timeDiff > 2500) {
-                    lastSpokenText = englishSentence;
+                if (lastSpokenText !== info.speech || timeDiff > 2500) {
+                    lastSpokenText = info.speech;
                     lastSpokenTime = currentTime;
-                    speakText(englishSentence);
+                    speakText(info.speech);
                 }
             }
         }
 
+        // 6. TTS 음성 합성
         function speakText(text) {
-            if ('speechSynthesis' in window) {
+            if ("speechSynthesis" in window) {
                 window.speechSynthesis.cancel();
                 const speech = new SpeechSynthesisUtterance(text);
-                speech.lang = 'en-US';
+                speech.lang = "en-US";
                 speech.rate = 0.9;
                 window.speechSynthesis.speak(speech);
             }
