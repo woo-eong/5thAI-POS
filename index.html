@@ -95,25 +95,18 @@
             position: relative;
         }
 
-        #media-preview-container video {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-            transform: scaleX(-1);
-        }
-
-        #media-preview-container img.captured-photo {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-            transform: scaleX(-1);
-        }
-
-        #media-preview-container img.uploaded-photo {
+        #media-preview-container video,
+        #media-preview-container img {
             width: 100%;
             height: 100%;
             object-fit: cover;
             transform: none;
+        }
+
+        /* 전면 카메라일 때만 좌우 반전 적용 */
+        #media-preview-container video.mirror,
+        #media-preview-container img.mirror {
+            transform: scaleX(-1);
         }
 
         .btn-row {
@@ -260,7 +253,6 @@
             margin-top: 6px;
         }
 
-        /* 상위 3개 막대 영역 고정 높이 확보로 출렁임 방지 */
         .top3-bars {
             width: 100%;
             margin-top: 12px;
@@ -455,6 +447,7 @@
 
         const MODEL_URL = "./";
         let model, videoElement, stream, isWebcamRunning = false;
+        let isFrontCamera = false; // 현재 카메라가 전면(user)인지 여부
         let isPredicting = false;
         let lastPredictTime = 0;
         let lastSpokenText = "";
@@ -510,13 +503,28 @@
                 setStatusText("📷 카메라 권한 요청 중...");
 
                 try {
+                    // 핸드폰/태블릿 후면 카메라 우선 시도
                     stream = await navigator.mediaDevices.getUserMedia({
-                        video: { width: 224, height: 224, facingMode: { ideal: "environment" } }
+                        video: { facingMode: { exact: "environment" } }
                     });
+                    isFrontCamera = false;
                 } catch (envErr) {
+                    // 후면 카메라가 없는 PC/크롬북/노트북은 전면 카메라로 연결
                     stream = await navigator.mediaDevices.getUserMedia({
-                        video: { width: 224, height: 224, facingMode: "user" }
+                        video: { facingMode: "user" }
                     });
+                    isFrontCamera = true;
+                }
+
+                // 트랙 설정에서도 실제 facingMode를 한 번 더 확인
+                const videoTrack = stream.getVideoTracks()[0];
+                if (videoTrack && videoTrack.getSettings) {
+                    const settings = videoTrack.getSettings();
+                    if (settings.facingMode === "environment") {
+                        isFrontCamera = false;
+                    } else if (settings.facingMode === "user") {
+                        isFrontCamera = true;
+                    }
                 }
 
                 const container = document.getElementById("media-preview-container");
@@ -526,6 +534,9 @@
                 videoElement.srcObject = stream;
                 videoElement.autoplay = true;
                 videoElement.playsInline = true;
+                if (isFrontCamera) {
+                    videoElement.classList.add("mirror");
+                }
                 container.appendChild(videoElement);
 
                 isWebcamRunning = true;
@@ -550,7 +561,6 @@
         async function loop(now) {
             if (!isWebcamRunning || !videoElement) return;
 
-            // 약 250ms 간격으로만 추론하여 화면이 과도하게 흔들리지 않게 조절
             if (!isPredicting && (!lastPredictTime || now - lastPredictTime >= 250)) {
                 isPredicting = true;
                 lastPredictTime = now;
@@ -571,9 +581,12 @@
             canvas.height = 224;
             const ctx = canvas.getContext("2d");
 
+            // 전면 카메라일 때만 좌우반전 캡처, 후면 카메라는 원본 정방향 캡처
             ctx.save();
-            ctx.translate(canvas.width, 0);
-            ctx.scale(-1, 1);
+            if (isFrontCamera) {
+                ctx.translate(canvas.width, 0);
+                ctx.scale(-1, 1);
+            }
             ctx.drawImage(videoElement, 0, 0, canvas.width, canvas.height);
             ctx.restore();
 
@@ -584,7 +597,9 @@
 
             const dataUrl = canvas.toDataURL("image/png");
             const imgElement = document.createElement("img");
-            imgElement.className = "captured-photo";
+            if (isFrontCamera) {
+                imgElement.classList.add("mirror");
+            }
             imgElement.src = dataUrl;
             imgElement.onload = async function() {
                 const container = document.getElementById("media-preview-container");
@@ -642,7 +657,6 @@
             const reader = new FileReader();
             reader.onload = async function(e) {
                 const imgElement = document.createElement("img");
-                imgElement.className = "uploaded-photo";
                 imgElement.src = e.target.result;
                 imgElement.onload = async function() {
                     const container = document.getElementById("media-preview-container");
