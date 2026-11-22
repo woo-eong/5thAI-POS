@@ -395,7 +395,7 @@
             <h2>🏷️ POS 결제 화면</h2>
             <div class="result-box">
                 <img id="product-img" src="https://via.placeholder.com/110?text=Scan+Price" alt="상품 이미지">
-                <div style="font-size: 0.85rem; color: #64748b;">판정 결과 (신뢰도 기준 90%)</div>
+                <div id="threshold-label" style="font-size: 0.85rem; color: #64748b;">판정 결과 (신뢰도 기준 80%)</div>
                 <div id="recognized-price" class="price-tag">스캔 대기 중...</div>
                 <div id="english-text" class="english-speech">"They're..."</div>
 
@@ -425,7 +425,7 @@
             scopeText: "손글씨 가격 카드(10000~50000)를 구분해요 · 5학년 영어 9단원",
             basicGuide: "10000~50000원 손글씨 카드를 화면에 맞춰 찍어 주세요. 확신이 부족하면 '잘 모르겠어요'가 뜰 수 있어요!",
             grade: "high",
-            threshold: 0.90,
+            threshold: 0.80,
             classes: {
                 "10000": {
                     label: "10,000원 같아요.",
@@ -489,6 +489,8 @@
             document.getElementById("app-title").innerText = CONFIG.title;
             document.getElementById("scope-subtitle").innerText = CONFIG.scopeText;
             document.getElementById("basic-guide").innerText = CONFIG.basicGuide;
+            document.getElementById("threshold-label").innerText =
+                `판정 결과 (신뢰도 기준 ${Math.round(CONFIG.threshold * 100)}%)`;
             document.getElementById("always-notice").innerText = CONFIG.notice;
             document.getElementById("question-box").innerText =
                 CONFIG.grade === "high" ? CONFIG.question : "";
