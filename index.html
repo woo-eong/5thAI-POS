@@ -49,9 +49,9 @@
             gap: clamp(14px, 2vw, 22px);
             max-width: 1120px;
             width: 100%;
+            align-items: start;
         }
 
-        /* 태블릿 세로·작은 화면 대응 */
         @media (max-width: 820px) {
             .main-container {
                 grid-template-columns: 1fr;
@@ -67,7 +67,7 @@
             flex-direction: column;
             align-items: center;
             text-align: center;
-            min-width: 0; /* 그리드 항목 넘침 방지 */
+            min-width: 0;
         }
 
         h2 {
@@ -85,8 +85,8 @@
             overflow: hidden;
             border: 3px solid #cbd5e1;
             background: #000;
-            width: clamp(180px, 22vw, 224px);
-            height: clamp(180px, 22vw, 224px);
+            width: clamp(220px, 26vw, 280px);
+            height: clamp(220px, 26vw, 280px);
             display: flex;
             align-items: center;
             justify-content: center;
@@ -197,7 +197,6 @@
             cursor: pointer;
         }
 
-        /* 상태 문구: 넓을 때는 한 줄 유지, 아주 좁은 화면에서만 줄바꿈 */
         #model-status {
             font-size: clamp(0.75rem, 1.05vw, 0.85rem);
             color: #2563eb;
@@ -230,12 +229,12 @@
         }
 
         #product-img {
-            width: 120px;
-            height: 120px;
+            width: 110px;
+            height: 110px;
             object-fit: cover;
             border-radius: 10px;
             border: 1px solid #cbd5e1;
-            margin-bottom: 10px;
+            margin-bottom: 8px;
             background: #fff;
         }
 
@@ -244,6 +243,10 @@
             font-weight: bold;
             color: #2563eb;
             margin: 4px 0;
+            min-height: 1.8rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
 
         .english-speech {
@@ -254,13 +257,15 @@
             padding: 8px 12px;
             border-radius: 8px;
             width: 100%;
-            margin-top: 8px;
+            margin-top: 6px;
         }
 
+        /* 상위 3개 막대 영역 고정 높이 확보로 출렁임 방지 */
         .top3-bars {
             width: 100%;
             margin-top: 12px;
             text-align: left;
+            min-height: 108px;
         }
 
         .prob-row {
@@ -287,6 +292,7 @@
             height: 100%;
             background: #2563eb;
             width: 0%;
+            transition: width 0.12s linear;
         }
 
         .reflection-question {
@@ -377,7 +383,7 @@
         <div class="card">
             <h2>🏷️ POS 결제 화면</h2>
             <div class="result-box">
-                <img id="product-img" src="https://via.placeholder.com/120?text=Scan+Price" alt="상품 이미지">
+                <img id="product-img" src="https://via.placeholder.com/110?text=Scan+Price" alt="상품 이미지">
                 <div style="font-size: 0.85rem; color: #64748b;">판정 결과</div>
                 <div id="recognized-price" class="price-tag">스캔 대기 중...</div>
                 <div id="english-text" class="english-speech">"They're..."</div>
@@ -449,6 +455,8 @@
 
         const MODEL_URL = "./";
         let model, videoElement, stream, isWebcamRunning = false;
+        let isPredicting = false;
+        let lastPredictTime = 0;
         let lastSpokenText = "";
         let lastSpokenTime = 0;
 
@@ -521,6 +529,7 @@
                 container.appendChild(videoElement);
 
                 isWebcamRunning = true;
+                lastPredictTime = 0;
                 statusDiv.style.color = "#16a348";
                 setStatusText("✔ 카메라 작동 중! '사진 찍기'를 눌러보세요.");
                 startBtn.innerText = "📷 카메라 작동 중";
@@ -538,10 +547,20 @@
             }
         }
 
-        async function loop() {
+        async function loop(now) {
             if (!isWebcamRunning || !videoElement) return;
-            await predictMedia(videoElement);
-            window.requestAnimationFrame(loop);
+
+            // 약 250ms 간격으로만 추론하여 화면이 과도하게 흔들리지 않게 조절
+            if (!isPredicting && (!lastPredictTime || now - lastPredictTime >= 250)) {
+                isPredicting = true;
+                lastPredictTime = now;
+                await predictMedia(videoElement, false);
+                isPredicting = false;
+            }
+
+            if (isWebcamRunning) {
+                window.requestAnimationFrame(loop);
+            }
         }
 
         async function capturePhoto() {
@@ -574,7 +593,7 @@
 
                 lastSpokenText = "";
                 lastSpokenTime = 0;
-                await predictMedia(imgElement);
+                await predictMedia(imgElement, true);
 
                 const statusDiv = document.getElementById("model-status");
                 statusDiv.style.color = "#16a348";
@@ -594,7 +613,7 @@
 
             document.getElementById("recognized-price").innerText = "스캔 대기 중...";
             document.getElementById("english-text").innerText = '"They\'re..."';
-            document.getElementById("product-img").src = "https://via.placeholder.com/120?text=Scan+Price";
+            document.getElementById("product-img").src = "https://via.placeholder.com/110?text=Scan+Price";
             document.getElementById("top3-container").innerHTML = "";
             document.getElementById("unsure-tips").style.display = "none";
             document.getElementById("image-upload").value = "";
@@ -632,7 +651,7 @@
 
                     lastSpokenText = "";
                     lastSpokenTime = 0;
-                    await predictMedia(imgElement);
+                    await predictMedia(imgElement, true);
                     statusDiv.style.color = "#16a348";
                     setStatusText("✔ 선택한 사진 판정 완료!");
                 };
@@ -640,7 +659,7 @@
             reader.readAsDataURL(file);
         }
 
-        async function predictMedia(imageSource) {
+        async function predictMedia(imageSource, shouldSpeakImmediately) {
             if (!model) return;
 
             try {
@@ -654,7 +673,7 @@
                 if (top1.probability < CONFIG.threshold) {
                     showUnsureScreen(top1.probability);
                 } else {
-                    updatePOSDisplay(top1.className, top1.probability);
+                    updatePOSDisplay(top1.className, top1.probability, shouldSpeakImmediately);
                 }
             } catch (err) {
                 console.error("예측 오류:", err);
@@ -699,7 +718,7 @@
             `;
         }
 
-        function updatePOSDisplay(className, prob) {
+        function updatePOSDisplay(className, prob, shouldSpeakImmediately) {
             const cleanName = className.replace("class_", "").trim();
             const pct = Math.round(prob * 100);
             const priceDisplay = document.getElementById("recognized-price");
@@ -713,7 +732,7 @@
             let info = matchedKey ? CONFIG.classes[matchedKey] : {
                 label: `${cleanName} 같음`,
                 speech: "Please show the price card.",
-                img: "https://via.placeholder.com/120?text=Ready"
+                img: "https://via.placeholder.com/110?text=Ready"
             };
 
             priceDisplay.innerText = CONFIG.grade === "high"
@@ -726,7 +745,7 @@
             const timeDiff = currentTime - lastSpokenTime;
 
             if (!cleanName.toLowerCase().includes("background")) {
-                if (lastSpokenText !== info.speech || timeDiff > 2500) {
+                if (shouldSpeakImmediately || lastSpokenText !== info.speech || timeDiff > 2500) {
                     lastSpokenText = info.speech;
                     lastSpokenTime = currentTime;
                     speakText(info.speech);
