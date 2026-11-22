@@ -447,7 +447,7 @@
 
         const MODEL_URL = "./";
         let model, videoElement, stream, isWebcamRunning = false;
-        let isFrontCamera = false; // 현재 카메라가 전면(user)인지 여부
+        let isFrontCamera = false;
         let isPredicting = false;
         let lastPredictTime = 0;
         let lastSpokenText = "";
@@ -503,20 +503,17 @@
                 setStatusText("📷 카메라 권한 요청 중...");
 
                 try {
-                    // 핸드폰/태블릿 후면 카메라 우선 시도
                     stream = await navigator.mediaDevices.getUserMedia({
                         video: { facingMode: { exact: "environment" } }
                     });
                     isFrontCamera = false;
                 } catch (envErr) {
-                    // 후면 카메라가 없는 PC/크롬북/노트북은 전면 카메라로 연결
                     stream = await navigator.mediaDevices.getUserMedia({
                         video: { facingMode: "user" }
                     });
                     isFrontCamera = true;
                 }
 
-                // 트랙 설정에서도 실제 facingMode를 한 번 더 확인
                 const videoTrack = stream.getVideoTracks()[0];
                 if (videoTrack && videoTrack.getSettings) {
                     const settings = videoTrack.getSettings();
@@ -576,18 +573,25 @@
         async function capturePhoto() {
             if (!videoElement || !model) return;
 
+            const vw = videoElement.videoWidth || 224;
+            const vh = videoElement.videoHeight || 224;
+
+            // 미리보기(object-fit: cover)와 동일하게 원본 영상의 가운데 정사각형 영역만 크롭
+            const side = Math.min(vw, vh);
+            const sx = (vw - side) / 2;
+            const sy = (vh - side) / 2;
+
             const canvas = document.createElement("canvas");
             canvas.width = 224;
             canvas.height = 224;
             const ctx = canvas.getContext("2d");
 
-            // 전면 카메라일 때만 좌우반전 캡처, 후면 카메라는 원본 정방향 캡처
             ctx.save();
             if (isFrontCamera) {
                 ctx.translate(canvas.width, 0);
                 ctx.scale(-1, 1);
             }
-            ctx.drawImage(videoElement, 0, 0, canvas.width, canvas.height);
+            ctx.drawImage(videoElement, sx, sy, side, side, 0, 0, canvas.width, canvas.height);
             ctx.restore();
 
             isWebcamRunning = false;
@@ -597,9 +601,6 @@
 
             const dataUrl = canvas.toDataURL("image/png");
             const imgElement = document.createElement("img");
-            if (isFrontCamera) {
-                imgElement.classList.add("mirror");
-            }
             imgElement.src = dataUrl;
             imgElement.onload = async function() {
                 const container = document.getElementById("media-preview-container");
