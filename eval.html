@@ -226,7 +226,7 @@
         .wrong-card .wrong-info {
             font-size: 0.65rem;
             color: #475569;
-            line-height: 1.2;
+            line-height: 1.25;
         }
 
         .file-name-text {
@@ -263,8 +263,8 @@
             </div>
 
             <div style="margin-top: 12px; font-size: 0.85rem; color: #475569;">
-                <label for="threshold-range">인식 판정 기준 신뢰도: <span id="threshold-val">50</span>%</label>
-                <input type="range" id="threshold-range" min="10" max="90" value="50" step="10" style="width: 100%; cursor: pointer;" oninput="onThresholdChange(this.value)">
+                <label for="threshold-range">인식 판정 기준 신뢰도: <span id="threshold-val">80</span>%</label>
+                <input type="range" id="threshold-range" min="10" max="100" value="80" step="5" style="width: 100%; cursor: pointer;" oninput="onThresholdChange(this.value)">
             </div>
             
             <div class="btn-group">
@@ -486,27 +486,24 @@
                 const prob = item.confidence;
 
                 classTotal[actual]++;
+                matrix[actual][pred]++;
 
-                let isCorrect = false;
-                if (prob >= threshold && actual === pred) {
-                    isCorrect = true;
+                const isCorrect = (prob >= threshold && actual === pred);
+                if (isCorrect) {
                     correctCount++;
                     classCorrect[actual]++;
-                    matrix[actual][pred]++;
                 } else {
-                    let targetPred = pred;
-                    if (actual === pred) {
-                        const otherClasses = classLabels.filter(c => c !== actual);
-                        targetPred = otherClasses[0] || pred;
-                    }
-                    matrix[actual][targetPred]++;
+                    const cleanActual = actual.replace('class_', '');
+                    const cleanPred = pred.replace('class_', '');
+                    const reasonText = (actual === pred && prob < threshold) ? " (기준미달)" : "";
 
                     wrongCardsHTML += `
                         <div class="wrong-card">
                             <img src="${item.dataUrl}" alt="오인식 이미지">
                             <div class="wrong-info">
                                 <div class="file-name-text" title="${item.filename}">${item.filename}</div>
-                                <span style="color:#dc2626;">➔ ${pred.replace('class_', '')}</span><br>
+                                <span>실제 ${cleanActual}</span><br>
+                                <span style="color:#dc2626;">➔ ${cleanPred}${reasonText}</span><br>
                                 <span style="color:#64748b;">(${(prob*100).toFixed(0)}%)</span>
                             </div>
                         </div>
@@ -555,7 +552,7 @@
             const errorSummary = document.getElementById("error-summary-text");
             if (wrongCount > 0) {
                 errorSummary.style.display = "block";
-                errorSummary.innerText = `💡 분석 요약: 총 ${wrongCount}건의 오인식/신뢰도 미달 발생 (기준 ${threshold*100}%)`;
+                errorSummary.innerText = `💡 분석 요약: 총 ${wrongCount}건의 오인식/신뢰도 미달 발생 (기준 ${Math.round(threshold*100)}%)`;
             } else {
                 errorSummary.style.display = "none";
             }
