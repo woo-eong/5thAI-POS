@@ -167,7 +167,7 @@
             font-size: 0.95rem;
             cursor: pointer;
             transition: background 0.2s;
-            display: none; /* 촬영 전에는 숨김 */
+            display: none;
         }
 
         button.retake-btn:hover {
@@ -315,7 +315,6 @@
             initModel();
         });
 
-        // 1. 모델 로드 함수
         async function initModel() {
             const statusDiv = document.getElementById("model-status");
             const startBtn = document.getElementById("start-btn");
@@ -334,7 +333,6 @@
             }
         }
 
-        // 2. 브라우저 표준 웹캠 API 직접 실행
         async function startWebcam() {
             if (isWebcamRunning) return;
 
@@ -385,7 +383,7 @@
             window.requestAnimationFrame(loop);
         }
 
-        // 2-1. 카메라 화면에서 사진 찍기(캡처) 및 판정
+        // 사진 찍기 시 좌우반전 적용
         async function capturePhoto() {
             if (!videoElement || !model) return;
 
@@ -394,12 +392,13 @@
             canvas.height = 224;
             const ctx = canvas.getContext("2d");
 
-            // 미리보기 비디오와 동일하게 좌우 반전 캡처
+            // 좌우반전 적용하여 캡처
+            ctx.save();
             ctx.translate(canvas.width, 0);
             ctx.scale(-1, 1);
             ctx.drawImage(videoElement, 0, 0, canvas.width, canvas.height);
+            ctx.restore();
 
-            // 실시간 루프 일시 정지 및 스트림 해제
             isWebcamRunning = false;
             if (stream) {
                 stream.getTracks().forEach(track => track.stop());
@@ -413,7 +412,6 @@
                 container.innerHTML = "";
                 container.appendChild(imgElement);
 
-                // 찍힌 사진 기준으로 음성도 한 번 재생되도록 초기화 후 예측
                 lastSpokenText = "";
                 lastSpokenTime = 0;
                 await predictMedia(imgElement);
@@ -429,7 +427,6 @@
             };
         }
 
-        // 2-2. 재촬영 기능 (결과 초기화 후 즉시 카메라 재가동)
         async function retakePhoto() {
             window.speechSynthesis.cancel();
             lastSpokenText = "";
@@ -443,7 +440,6 @@
             await startWebcam();
         }
 
-        // 3. 업로드한 사진 파일 처리
         async function handleImageUpload(event) {
             const file = event.target.files[0];
             if (!file || !model) return;
@@ -481,7 +477,6 @@
             reader.readAsDataURL(file);
         }
 
-        // 4. 공통 AI 예측 처리
         async function predictMedia(imageSource) {
             if (!model) return;
 
@@ -506,7 +501,6 @@
             }
         }
 
-        // 5. POS 화면 업데이트 및 영어 발화 연동
         function updatePOSDisplay(className) {
             const cleanName = className.replace('class_', '').trim();
             const priceDisplay = document.getElementById("recognized-price");
@@ -553,7 +547,6 @@
             }
         }
 
-        // 6. TTS 음성 합성
         function speakText(text) {
             if ('speechSynthesis' in window) {
                 window.speechSynthesis.cancel();
