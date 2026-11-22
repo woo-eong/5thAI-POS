@@ -1,1 +1,1 @@
-{"tfjsVersion":"1.7.4","tmVersion":"2.4.19","packageVersion":"0.8.4-alpha2","packageName":"@teachablemachine/image","timeStamp":"2026-11-10T10:18:30.105Z","userMetadata":{},"modelName":"5학년 영어  AI POS(1110)","labels":["10000","20000","30000","40000","50000","background"],"imageSize":224}
+{"tfjsVersion":"1.7.4","tmVersion":"2.4.19","packageVersion":"0.8.4-alpha2","packageName":"@teachablemachine/image","timeStamp":"2026-11-22T08:26:57.292Z","userMetadata":{},"modelName":"5학년 영어  AI POS(1110)","labels":["10000","20000","30000","40000","50000","background"],"imageSize":224}
